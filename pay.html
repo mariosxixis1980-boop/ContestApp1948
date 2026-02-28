@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Πληρωμή €1,99</title>
+<style>
+:root{
+  --bg:#070b13;--b:rgba(255,255,255,.12);
+  --t:#eaf1ff;--m:rgba(255,255,255,.65);
+  --g:rgba(46,204,113,.20);--a:rgba(241,196,15,.16);--r:rgba(231,76,60,.14);--bl:rgba(52,152,219,.18);
+}
+*{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+body{margin:0;min-height:100vh;padding:14px;color:var(--t);
+background:
+radial-gradient(900px 700px at 20% 0%,rgba(40,110,255,.25),transparent 55%),
+radial-gradient(900px 700px at 80% 10%,rgba(0,255,170,.18),transparent 55%),
+var(--bg)}
+.card{max-width:840px;margin:0 auto;border:1px solid var(--b);border-radius:18px;padding:14px;
+background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.04));
+box-shadow:0 18px 60px rgba(0,0,0,.55)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.box{border:1px solid var(--b);border-radius:16px;background:rgba(0,0,0,.18);padding:12px;margin-top:12px}
+.pill{padding:8px 12px;border:1px solid var(--b);border-radius:999px;background:rgba(0,0,0,.25);font-weight:800}
+.btn{border:1px solid var(--b);background:rgba(255,255,255,.06);color:var(--t);
+padding:10px 12px;border-radius:14px;font-weight:900;cursor:pointer;text-decoration:none;display:inline-flex;gap:8px;align-items:center}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.g{background:var(--g)} .a{background:var(--a)} .r{background:var(--r)} .bl{background:var(--bl)}
+.mini{color:var(--m);font-weight:750}
+code{background:rgba(0,0,0,.35);padding:2px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.12)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;padding:10px 12px;border-radius:999px;
+border:1px solid var(--b);background:rgba(0,0,0,.55);display:none;z-index:9999;max-width:min(92vw,760px);text-align:center}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1 style="margin:0;font-size:40px">💶 Πληρωμή €1,99</h1>
+  <div class="mini" style="margin-top:6px">
+    Αυτό είναι <b>TEST MODE</b>. Στο τέλος το κάνουμε κανονικό (Stripe/PayPal).
+  </div>
+
+  <div class="box">
+    <div class="pill">📌 Στοιχεία</div>
+    <div class="mini" id="info" style="margin-top:8px">-</div>
+  </div>
+
+  <div class="box">
+    <div class="pill">✅ Πώς πληρώνεις (TEST)</div>
+    <div class="mini" style="margin-top:8px;line-height:1.6">
+      1) Στείλε <b>€1,99</b> με σημείωση: <code id="note">HELP</code><br/>
+      2) Μέθοδος: <b>Revolut / PayPal / IBAN</b> (βάλε δικά σου στοιχεία)<br/>
+      3) Μετά πάτα <b>“Πλήρωσα”</b> για να ενεργοποιηθούν τα 3 HELP.
+    </div>
+  </div>
+
+  <div class="row">
+    <a class="btn" href="dashboard.html">← Πίσω</a>
+    <button class="btn r" id="cancel" type="button">Άκυρο</button>
+    <button class="btn g" id="paid" type="button">✅ Πλήρωσα</button>
+  </div>
+
+  <div class="box">
+    <div class="mini" id="guardMsg">
+      Με το “Πλήρωσα” γράφεται αγορά HELP στον τρέχον διαγωνισμό (3 HELP) για τον χρήστη σου.
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script type="module">
+import { getSupabase } from "./supabase.js";
+let supabase;
+try{ supabase = await getSupabase(); }catch(e){ console.warn('Supabase init failed:', e); }
+
+const K={
+  S:'session',
+  A:'activeContest',
+  H:'help199',
+  M:'contestMatches',
+  META:'contestMeta',
+  LOCK:'picksLocked'
+};
+const $=id=>document.getElementById(id);
+const R=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(f))}catch{return f}};
+const W=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const now=()=>Date.now();
+const T=m=>{const x=$('toast');x.textContent=m;x.style.display='block';clearTimeout(window.__t);window.__t=setTimeout(()=>x.style.display='none',2300)};
+
+/* helpers */
+function isValidEmail(email){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); } // (δεν το χρειάζουμε εδώ, απλά safe)
+
+function deadlineMsFromMatches(arr){
+  const times=(arr||[])
+    .filter(m=>m && m.off!==true)
+    .map(m=>new Date(m.startISO).getTime())
+    .filter(Number.isFinite);
+  if(!times.length) return null;
+  return Math.min(...times)-10*60*1000;
+}
+
+function lockAll(){ return R(K.LOCK,{}); }
+function isLocked(cid,u){ return !!(lockAll()?.[cid]?.[u]); }
+
+function ensureHelpRec(cid,u){
+  const all=R(K.H,{});
+  all[cid]=all[cid]||{};
+  all[cid][u]=all[cid][u]||{paidAt:null,remaining:0,usedMatchIds:[]};
+  all[cid][u].remaining = Number(all[cid][u].remaining||0);
+  all[cid][u].usedMatchIds = Array.isArray(all[cid][u].usedMatchIds)?all[cid][u].usedMatchIds:[];
+  W(K.H,all);
+  return all[cid][u];
+}
+
+/* ✅ GUARD: οι ίδιες προϋποθέσεις με dashboard */
+function computeGuards(){
+  const s=R(K.S,null);
+  const active=R(K.A,null);
+  const cid=active?.id;
+
+  const matches=R(K.M,[]);
+  const validMatches=(matches||[]).filter(m=>m && m.off !== true);
+  const noGames = !validMatches.length;
+
+  const dl = deadlineMsFromMatches(matches);
+  const timeLocked = (dl && now()>=dl);
+
+  const userLocked = (s && cid) ? isLocked(cid, s.username) : false;
+
+  const meta = (cid ? (R(K.META,{})[cid]||{}) : {});
+  const started = meta.contestStarted === true;
+  const elig = Array.isArray(meta.eligibleUsers) ? meta.eligibleUsers : [];
+  const me = String(s?.username||'').toLowerCase();
+  const blocked = !!(started && !elig.map(x=>String(x).toLowerCase()).includes(me));
+
+  return { s, active, cid, matches, validMatches, noGames, dl, timeLocked, userLocked, blocked };
+}
+
+(function main(){
+  const g = computeGuards();
+
+  if(!g.s) return location.href='login.html';
+  if(!g.cid) return location.href='dashboard.html';
+
+  $('info').innerHTML = `User: <b>${g.s.username}</b> • Contest: <b>${g.cid}</b> • Τιμή: <b>€1,99</b>`;
+  $('note').textContent = `HELP ${g.cid} ${g.s.username}`;
+
+  $('cancel').onclick=()=>location.href='dashboard.html';
+
+  function disablePay(reason){
+    $('paid').disabled = true;
+    $('guardMsg').innerHTML = reason;
+  }
+
+  // ✅ Απαγορεύσεις
+  if(g.noGames){
+    disablePay('⛔ Δεν υπάρχουν αγώνες (ή όλοι είναι OFF). Δεν μπορείς να αγοράσεις τώρα.');
+  } else if(g.blocked){
+    disablePay('⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει — δεν μπορείς να αγοράσεις.');
+  } else if(g.timeLocked){
+    disablePay('🔒 Έκλεισε ο χρόνος (deadline) — δεν γίνεται αγορά.');
+  } else if(g.userLocked){
+    disablePay('🔒 Έχεις ήδη κλειδώσει τις προβλέψεις σου — δεν γίνεται αγορά.');
+  }
+
+    $('paid').onclick = async () => {
+  // Two quick confirmations (as requested)
+  if (!confirm("Για ασφάλεια: έχεις προβλέψει σε όλα τα παιχνίδια;")) return;
+  if (!confirm("Είσαι σίγουρος ότι θέλεις να προχωρήσεις σε αγορά HELP;")) return;
+
+  const gg = computeGuards();
+
+  if (gg.noGames) return T('⛔ Δεν υπάρχουν αγώνες.');
+  if (gg.blocked) return T('⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει.');
+  if (gg.timeLocked) return T('🔒 Έκλεισε ο χρόνος.');
+  if (gg.userLocked) return T('🔒 Έχεις κλειδώσει — δεν γίνεται αγορά.');
+
+  // If already purchased in DB, just go back
+  try{
+    const { data:{ session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if(userId){
+      const { data, error } = await supabase
+        .from('help_purchases')
+        .select('user_id,contest_code,remaining')
+        .eq('user_id', userId)
+        .eq('contest_code', gg.cid)
+        .maybeSingle();
+      if(!error && data){
+        T('✅ Ήδη υπάρχει αγορά για αυτό το contest.');
+        return setTimeout(()=>location.href='dashboard.html?paid=1', 700);
+      }
+    }
+  }catch(e){ /* ignore */ }
+
+  // Stripe Checkout (server-side). If not deployed yet, fallback to TEST local activation.
+  try{
+    const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      body: { contest_code: gg.cid }
+    });
+    if(error) throw error;
+
+    const url = data?.url || data?.checkoutUrl;
+    if(!url) throw new Error('No checkout URL returned');
+    window.location.href = url;
+    return;
+  }catch(e){
+    console.warn('Stripe flow not available yet, using TEST activation:', e);
+
+    // TEST fallback (keeps app working until Stripe is fully configured)
+    const rec=ensureHelpRec(gg.cid, gg.s.username);
+    if(rec.paidAt){
+      T('✅ Ήδη υπάρχει αγορά για αυτό το contest.');
+      return setTimeout(()=>location.href='dashboard.html?paid=1', 700);
+    }
+    rec.paidAt = now();
+    rec.remaining = 3;
+    rec.usedMatchIds = [];
+
+    try{
+      const { data:{ session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if(userId){
+        const payload = {
+          user_id: userId,
+          contest_code: gg.cid,
+          purchased_at: new Date(rec.paidAt).toISOString(),
+          remaining: 3,
+          used_match_ids: [],
+          updated_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from('help_purchases').upsert(payload, { onConflict: 'user_id,contest_code' });
+        if(error) console.warn('help_purchases upsert error:', error);
+      }
+    }catch(ex){ console.warn('help_purchases sync failed:', ex); }
+
+    const all=R(K.H,{});
+    all[gg.cid]=all[gg.cid]||{};
+    all[gg.cid][gg.s.username]=rec;
+    W(K.H,all);
+
+    T('✅ (TEST) Ενεργοποιήθηκαν 3 HELP!');
+    setTimeout(()=>location.href='dashboard.html?paid=1', 700);
+  }
+};
+})();
+</script>
+</body>
+</html>
