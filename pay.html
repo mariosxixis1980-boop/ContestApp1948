@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="el">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Πληρωμή €1,99</title>
-<style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Αγορά HELP • CMP</title>
+  <style>
 :root{
   --bg:#070b13;--b:rgba(255,255,255,.12);
   --t:#eaf1ff;--m:rgba(255,255,255,.65);
@@ -33,218 +33,133 @@ border:1px solid var(--b);background:rgba(0,0,0,.55);display:none;z-index:9999;m
 </style>
 </head>
 <body>
+  <div class="wrap">
+    <div class="card">
+      <div class="top">
+        <div>
+          <div class="title">Αγορά HELP (3)</div>
+          <div class="sub">Πληρώνεις <b>€1,99</b> και ξεκλειδώνεις <b>3 HELP</b> για τον τρέχοντα διαγωνισμό.</div>
+        </div>
+        <span class="pill" id="contestPill">—</span>
+      </div>
 
-<div class="card">
-  <h1 style="margin:0;font-size:40px">💶 Πληρωμή €1,99</h1>
-  <div class="mini" style="margin-top:6px">
-    Αυτό είναι <b>TEST MODE</b>. Στο τέλος το κάνουμε κανονικό (Stripe/PayPal).
-  </div>
+      <div class="box">
+        <div class="row2">
+          <div class="k">Σημείωση / Code</div>
+          <code id="note">HELP</code>
+        </div>
+        <div class="muted">
+          Θα ανοίξει ασφαλής σελίδα πληρωμής της Stripe. Μετά την πληρωμή θα γυρίσεις αυτόματα στο Dashboard.
+        </div>
+        <div class="msg ok" id="msgOk" style="display:none"></div>
+        <div class="msg bad" id="msgBad" style="display:none"></div>
+      </div>
 
-  <div class="box">
-    <div class="pill">📌 Στοιχεία</div>
-    <div class="mini" id="info" style="margin-top:8px">-</div>
-  </div>
+      <div class="row">
+        <a class="btn" href="dashboard.html">← Πίσω</a>
+        <button class="btn g" id="buy" type="button">Αγορά €1,99 (Stripe)</button>
+      </div>
 
-  <div class="box">
-    <div class="pill">✅ Πώς πληρώνεις (TEST)</div>
-    <div class="mini" style="margin-top:8px;line-height:1.6">
-      1) Στείλε <b>€1,99</b> με σημείωση: <code id="note">HELP</code><br/>
-      2) Μέθοδος: <b>Revolut / PayPal / IBAN</b> (βάλε δικά σου στοιχεία)<br/>
-      3) Μετά πάτα <b>“Πλήρωσα”</b> για να ενεργοποιηθούν τα 3 HELP.
+      <div class="foot">
+        <span>Αν κάτι δεν πάει καλά, στείλε μου screenshot από Console + Network.</span>
+      </div>
     </div>
   </div>
-
-  <div class="row">
-    <a class="btn" href="dashboard.html">← Πίσω</a>
-    <button class="btn r" id="cancel" type="button">Άκυρο</button>
-    <button class="btn g" id="paid" type="button">✅ Πλήρωσα</button>
-  </div>
-
-  <div class="box">
-    <div class="mini" id="guardMsg">
-      Με το “Πλήρωσα” γράφεται αγορά HELP στον τρέχον διαγωνισμό (3 HELP) για τον χρήστη σου.
-    </div>
-  </div>
-</div>
-
-<div id="toast" class="toast"></div>
 
 <script type="module">
-import { getSupabase } from "./supabase.js";
-let supabase;
-try{ supabase = await getSupabase(); }catch(e){ console.warn('Supabase init failed:', e); }
+import { supabase } from "./supabase.js";
 
-const K={
-  S:'session',
-  A:'activeContest',
-  H:'help199',
-  M:'contestMatches',
-  META:'contestMeta',
-  LOCK:'picksLocked'
-};
-const $=id=>document.getElementById(id);
-const R=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(f))}catch{return f}};
-const W=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-const now=()=>Date.now();
-const T=m=>{const x=$('toast');x.textContent=m;x.style.display='block';clearTimeout(window.__t);window.__t=setTimeout(()=>x.style.display='none',2300)};
+const $ = (id) => document.getElementById(id);
+const show = (id, txt) => { const el=$(id); el.textContent = txt; el.style.display="block"; };
+const hide = (id) => { const el=$(id); el.style.display="none"; };
 
-/* helpers */
-function isValidEmail(email){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); } // (δεν το χρειάζουμε εδώ, απλά safe)
-
-function deadlineMsFromMatches(arr){
-  const times=(arr||[])
-    .filter(m=>m && m.off!==true)
-    .map(m=>new Date(m.startISO).getTime())
-    .filter(Number.isFinite);
-  if(!times.length) return null;
-  return Math.min(...times)-10*60*1000;
+function getContestCode() {
+  return (localStorage.getItem("contestCode") || "").trim();
 }
 
-function lockAll(){ return R(K.LOCK,{}); }
-function isLocked(cid,u){ return !!(lockAll()?.[cid]?.[u]); }
-
-function ensureHelpRec(cid,u){
-  const all=R(K.H,{});
-  all[cid]=all[cid]||{};
-  all[cid][u]=all[cid][u]||{paidAt:null,remaining:0,usedMatchIds:[]};
-  all[cid][u].remaining = Number(all[cid][u].remaining||0);
-  all[cid][u].usedMatchIds = Array.isArray(all[cid][u].usedMatchIds)?all[cid][u].usedMatchIds:[];
-  W(K.H,all);
-  return all[cid][u];
+async function getActiveContest() {
+  const { data, error } = await supabase
+    .from("contests")
+    .select("code,title")
+    .eq("active", true)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
 }
 
-/* ✅ GUARD: οι ίδιες προϋποθέσεις με dashboard */
-function computeGuards(){
-  const s=R(K.S,null);
-  const active=R(K.A,null);
-  const cid=active?.id;
-
-  const matches=R(K.M,[]);
-  const validMatches=(matches||[]).filter(m=>m && m.off !== true);
-  const noGames = !validMatches.length;
-
-  const dl = deadlineMsFromMatches(matches);
-  const timeLocked = (dl && now()>=dl);
-
-  const userLocked = (s && cid) ? isLocked(cid, s.username) : false;
-
-  const meta = (cid ? (R(K.META,{})[cid]||{}) : {});
-  const started = meta.contestStarted === true;
-  const elig = Array.isArray(meta.eligibleUsers) ? meta.eligibleUsers : [];
-  const me = String(s?.username||'').toLowerCase();
-  const blocked = !!(started && !elig.map(x=>String(x).toLowerCase()).includes(me));
-
-  return { s, active, cid, matches, validMatches, noGames, dl, timeLocked, userLocked, blocked };
+function setContestPill() {
+  const code = getContestCode();
+  $("contestPill").textContent = code ? ("Contest: " + code) : "Contest: —";
 }
 
-(function main(){
-  const g = computeGuards();
+async function ensureAuth() {
+  const { data } = await supabase.auth.getSession();
+  return data?.session ?? null; // return full session
+}
 
-  if(!g.s) return location.href='login.html';
-  if(!g.cid) return location.href='dashboard.html';
+async function startCheckout() {
+  hide("msgOk"); hide("msgBad");
+  const btn = $("buy");
+  btn.disabled = true;
+  btn.textContent = "Φόρτωση…";
 
-  $('info').innerHTML = `User: <b>${g.s.username}</b> • Contest: <b>${g.cid}</b> • Τιμή: <b>€1,99</b>`;
-  $('note').textContent = `HELP ${g.cid} ${g.s.username}`;
+  try {
+    const session = await ensureAuth();
+    if (!session?.user) {
+      show("msgBad", "Πρέπει να κάνεις login πρώτα.");
+      // If opened directly without logging in, the Edge Function will return 401.
+      return;
+    }
 
-  $('cancel').onclick=()=>location.href='dashboard.html';
-
-  function disablePay(reason){
-    $('paid').disabled = true;
-    $('guardMsg').innerHTML = reason;
-  }
-
-  // ✅ Απαγορεύσεις
-  if(g.noGames){
-    disablePay('⛔ Δεν υπάρχουν αγώνες (ή όλοι είναι OFF). Δεν μπορείς να αγοράσεις τώρα.');
-  } else if(g.blocked){
-    disablePay('⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει — δεν μπορείς να αγοράσεις.');
-  } else if(g.timeLocked){
-    disablePay('🔒 Έκλεισε ο χρόνος (deadline) — δεν γίνεται αγορά.');
-  } else if(g.userLocked){
-    disablePay('🔒 Έχεις ήδη κλειδώσει τις προβλέψεις σου — δεν γίνεται αγορά.');
-  }
-
-    $('paid').onclick = async () => {
-  // Two quick confirmations (as requested)
-  if (!confirm("Για ασφάλεια: έχεις προβλέψει σε όλα τα παιχνίδια;")) return;
-  if (!confirm("Είσαι σίγουρος ότι θέλεις να προχωρήσεις σε αγορά HELP;")) return;
-
-  const gg = computeGuards();
-
-  if (gg.noGames) return T('⛔ Δεν υπάρχουν αγώνες.');
-  if (gg.blocked) return T('⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει.');
-  if (gg.timeLocked) return T('🔒 Έκλεισε ο χρόνος.');
-  if (gg.userLocked) return T('🔒 Έχεις κλειδώσει — δεν γίνεται αγορά.');
-
-  // If already purchased in DB, just go back
-  try{
-    const { data:{ session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
-    if(userId){
-      const { data, error } = await supabase
-        .from('help_purchases')
-        .select('user_id,contest_code,remaining')
-        .eq('user_id', userId)
-        .eq('contest_code', gg.cid)
-        .maybeSingle();
-      if(!error && data){
-        T('✅ Ήδη υπάρχει αγορά για αυτό το contest.');
-        return setTimeout(()=>location.href='dashboard.html?paid=1', 700);
+    // Prefer contestCode from Dashboard, but if it's missing, fallback to the active contest in DB.
+    let contest_code = getContestCode();
+    if (!contest_code) {
+      const active = await getActiveContest();
+      contest_code = (active?.code || "").trim();
+      if (contest_code) {
+        localStorage.setItem("contestCode", contest_code);
+        $("contestPill").textContent = active?.title
+          ? `Contest: ${active.title} (${contest_code})`
+          : `Contest: ${contest_code}`;
       }
     }
-  }catch(e){ /* ignore */ }
+    if (!contest_code) {
+      show("msgBad", "Δεν βρέθηκε ενεργός διαγωνισμός. Πήγαινε Dashboard και άνοιξε διαγωνισμό.");
+      return;
+    }
 
-  // Stripe Checkout (server-side). If not deployed yet, fallback to TEST local activation.
-  try{
-    const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-      body: { contest_code: gg.cid }
+    // Call Edge Function -> returns { url }
+    const { data, error } = await supabase.functions.invoke("create-checkout-session", {
+      // Make the JWT explicit to avoid 401 when verify_jwt is enabled
+      headers: { Authorization: `Bearer ${session.access_token}` },
+      body: {
+        contest_code,
+        purchase_code: "HELP",
+        origin: window.location.origin
+      }
     });
-    if(error) throw error;
+    if (error) throw error;
+    if (!data?.url) throw new Error("Δεν επέστρεψε checkout URL.");
 
-    const url = data?.url || data?.checkoutUrl;
-    if(!url) throw new Error('No checkout URL returned');
-    window.location.href = url;
-    return;
-  }catch(e){
-    console.warn('Stripe flow not available yet, using TEST activation:', e);
-
-    // TEST fallback (keeps app working until Stripe is fully configured)
-    const rec=ensureHelpRec(gg.cid, gg.s.username);
-    if(rec.paidAt){
-      T('✅ Ήδη υπάρχει αγορά για αυτό το contest.');
-      return setTimeout(()=>location.href='dashboard.html?paid=1', 700);
-    }
-    rec.paidAt = now();
-    rec.remaining = 3;
-    rec.usedMatchIds = [];
-
-    try{
-      const { data:{ session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-      if(userId){
-        const payload = {
-          user_id: userId,
-          contest_code: gg.cid,
-          purchased_at: new Date(rec.paidAt).toISOString(),
-          remaining: 3,
-          used_match_ids: [],
-          updated_at: new Date().toISOString(),
-        };
-        const { error } = await supabase.from('help_purchases').upsert(payload, { onConflict: 'user_id,contest_code' });
-        if(error) console.warn('help_purchases upsert error:', error);
-      }
-    }catch(ex){ console.warn('help_purchases sync failed:', ex); }
-
-    const all=R(K.H,{});
-    all[gg.cid]=all[gg.cid]||{};
-    all[gg.cid][gg.s.username]=rec;
-    W(K.H,all);
-
-    T('✅ (TEST) Ενεργοποιήθηκαν 3 HELP!');
-    setTimeout(()=>location.href='dashboard.html?paid=1', 700);
+    window.location.href = data.url;
+  } catch (e) {
+    console.error(e);
+    show("msgBad", "Σφάλμα Stripe: " + (e?.message || String(e)));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Αγορά €1,99 (Stripe)";
   }
-};
-})();
+}
+
+$("buy").addEventListener("click", startCheckout);
+setContestPill();
+
+// Optional message when coming back from Stripe
+const qs = new URLSearchParams(location.search);
+if (qs.get("canceled") === "1") {
+  show("msgBad", "Η πληρωμή ακυρώθηκε.");
+}
 </script>
 </body>
 </html>
