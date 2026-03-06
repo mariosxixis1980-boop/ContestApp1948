@@ -37,7 +37,7 @@ border:1px solid var(--b);background:rgba(0,0,0,.55);display:none;z-index:9999;m
     <div class="card">
       <div class="top">
         <div>
-          <div class="title">Αγορά HELP (3)</div>
+          <div class="title"></div>
           <div class="sub">Πληρώνεις <b>€1,99</b> και ξεκλειδώνεις <b>3 HELP</b> για τον τρέχοντα διαγωνισμό.</div>
         </div>
         <span class="pill" id="contestPill">—</span>
@@ -45,11 +45,11 @@ border:1px solid var(--b);background:rgba(0,0,0,.55);display:none;z-index:9999;m
 
       <div class="box">
         <div class="row2">
-          <div class="k">Σημείωση / Code</div>
+          <div class="k"></div>
           <code id="note">HELP</code>
         </div>
         <div class="muted">
-          Θα ανοίξει ασφαλής σελίδα πληρωμής της Stripe. Μετά την πληρωμή θα γυρίσεις αυτόματα στο Dashboard.
+          Θα ανοίξει ασφαλής σελίδα πληρωμής της Stripe. Μετά την πληρωμή θα ανοίξουν          αυτόματα τα HELP
         </div>
         <div class="msg ok" id="msgOk" style="display:none"></div>
         <div class="msg bad" id="msgBad" style="display:none"></div>
@@ -61,39 +61,19 @@ border:1px solid var(--b);background:rgba(0,0,0,.55);display:none;z-index:9999;m
       </div>
 
       <div class="foot">
-        <span>Αν κάτι δεν πάει καλά, στείλε μου screenshot από Console + Network.</span>
+        <span>Σας ευχαριστώ πολύ.</span>
       </div>
     </div>
   </div>
 
 <script type="module">
-<<<<<<< HEAD
-import { supabase } from "./supabase.js";
-=======
 import { supabase, ensureSupabaseConfig } from "./supabase.js";
->>>>>>> bfefd81 (CMP update - fixed auth, reset password, help flow)
 
 const $ = (id) => document.getElementById(id);
 const show = (id, txt) => { const el=$(id); el.textContent = txt; el.style.display="block"; };
 const hide = (id) => { const el=$(id); el.style.display="none"; };
 
 function getContestCode() {
-<<<<<<< HEAD
-  return (localStorage.getItem("contestCode") || "").trim();
-}
-
-async function getActiveContest() {
-  const { data, error } = await supabase
-    .from("contests")
-    .select("code,title")
-    .eq("active", true)
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return data || null;
-}
-
-=======
   // Prefer URL param so pay.html can be opened directly from dashboard redirect.
   const qs = new URLSearchParams(location.search);
   const fromUrl = (qs.get("contest_code") || "").trim();
@@ -104,19 +84,15 @@ async function getActiveContest() {
   return (localStorage.getItem("contestCode") || "").trim();
 }
 
->>>>>>> bfefd81 (CMP update - fixed auth, reset password, help flow)
 function setContestPill() {
   const code = getContestCode();
   $("contestPill").textContent = code ? ("Contest: " + code) : "Contest: —";
 }
 
 async function ensureAuth() {
-  const { data } = await supabase.auth.getSession();
-<<<<<<< HEAD
-  return data?.session ?? null; // return full session
-=======
-  return data?.session ?? null;
->>>>>>> bfefd81 (CMP update - fixed auth, reset password, help flow)
+  const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
+  if (refreshErr) return null;
+  return refreshData?.session ?? null;
 }
 
 async function startCheckout() {
@@ -127,44 +103,6 @@ async function startCheckout() {
 
   try {
     const session = await ensureAuth();
-<<<<<<< HEAD
-    if (!session?.user) {
-      show("msgBad", "Πρέπει να κάνεις login πρώτα.");
-      // If opened directly without logging in, the Edge Function will return 401.
-      return;
-    }
-
-    // Prefer contestCode from Dashboard, but if it's missing, fallback to the active contest in DB.
-    let contest_code = getContestCode();
-    if (!contest_code) {
-      const active = await getActiveContest();
-      contest_code = (active?.code || "").trim();
-      if (contest_code) {
-        localStorage.setItem("contestCode", contest_code);
-        $("contestPill").textContent = active?.title
-          ? `Contest: ${active.title} (${contest_code})`
-          : `Contest: ${contest_code}`;
-      }
-    }
-    if (!contest_code) {
-      show("msgBad", "Δεν βρέθηκε ενεργός διαγωνισμός. Πήγαινε Dashboard και άνοιξε διαγωνισμό.");
-      return;
-    }
-
-    // Call Edge Function -> returns { url }
-    const { data, error } = await supabase.functions.invoke("create-checkout-session", {
-      // Make the JWT explicit to avoid 401 when verify_jwt is enabled
-      headers: { Authorization: `Bearer ${session.access_token}` },
-      body: {
-        contest_code,
-        purchase_code: "HELP",
-        origin: window.location.origin
-      }
-    });
-    if (error) throw error;
-    if (!data?.url) throw new Error("Δεν επέστρεψε checkout URL.");
-
-=======
     if (!session?.user || !session?.access_token) {
       show("msgBad", "Πρέπει να κάνεις login πρώτα.");
       return;
@@ -180,23 +118,27 @@ async function startCheckout() {
     // This avoids the common "Invalid JWT" when the function requires JWT verification.
     const { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY } = await ensureSupabaseConfig();
 
-    const r = await fetch(`${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/create-checkout-session`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${session.access_token}`
-      },
-      body: JSON.stringify({ contest_code, note: "HELP" })
-    });
+    
+const { data, error } = await supabase.functions.invoke("create-checkout-session", {
+  body: {
+    contest_code,
+    note: "HELP"
+  },
+  headers: {
+    Authorization: `Bearer ${session.access_token}`
+  }
+});
 
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      throw new Error(data?.message || data?.error || `HTTP ${r.status}`);
-    }
-    if (!data?.url) throw new Error("Δεν επέστρεψε checkout URL.");
+if (error) {
+  throw new Error(error.message || "Function error");
+}
 
->>>>>>> bfefd81 (CMP update - fixed auth, reset password, help flow)
+if (!data?.url) {
+  throw new Error("Δεν επέστρεψε checkout URL.");
+}
+
+window.location.href = data.url;
+
     window.location.href = data.url;
   } catch (e) {
     console.error(e);
