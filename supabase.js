@@ -2,7 +2,7 @@
 // Κρατάμε τα keys στο browser (localStorage) για απλό demo/local app.
 // Αν θες παραγωγή/ασφάλεια, τα server keys ΔΕΝ μπαίνουν ποτέ στο browser.
 
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const LS_URL_KEY = "CMP_SUPABASE_URL";
 const LS_ANON_KEY = "CMP_SUPABASE_ANON_KEY";
@@ -80,8 +80,20 @@ let _client = null;
 
 export async function getSupabase() {
   if (_client) return _client;
+
   const { url, anonKey } = await ensureSupabaseConfig();
-  _client = createClient(url, anonKey);
+
+  _client = createClient(url, anonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false
+    },
+    global: {
+      fetch: (...args) => fetch(...args)
+    }
+  });
+
   return _client;
 }
 

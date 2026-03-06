@@ -42,7 +42,8 @@
       font-weight:800;
       cursor:pointer;
     }
-    .msg{margin-top:10px;font-weight:700}
+    button:disabled{ opacity:.55; cursor:not-allowed; }
+    .msg{margin-top:10px;font-weight:700; white-space:pre-wrap;}
   </style>
 </head>
 
@@ -58,62 +59,96 @@
   </div>
 
   <script type="module">
-    import { supabase } from "./supabase.js";
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+    // ✅ ΒΑΛΕ ΤΑ ΣΩΣΤΑ (τα δικά σου είναι αυτά που μου έστειλες)
+    const SUPABASE_URL = "https://qhgdcouuxtcjrlsztvwm.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_mRB7RNRcLPF9n1eMjhwa0Q_3ya9qB5q";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        detectSessionInUrl: true,
+      }
+    });
 
     const msg = document.getElementById("msg");
     const passInput = document.getElementById("newPass");
+    const saveBtn = document.getElementById("saveBtn");
 
-    
-    // 1️⃣ ΠΙΑΝΟΥΜΕ SESSION ΑΠΟ ΤΟ URL (ΝΕΟ: code=..., ΠΑΛΙΟ: #access_token=...)
-    const qs = new URLSearchParams(location.search);
-    const code = qs.get("code");
-
-    if(code){
-      // Νέα ροή Supabase (PKCE / code exchange)
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if(error){
-        msg.textContent = "❌ Δεν μπόρεσα να ανοίξω session από το link. Άνοιξε ξανά το email link.";
-        msg.style.color = "#ffb3b3";
-      }
-    }else{
-      // Παλιά ροή (tokens στο hash)
-      const hash = new URLSearchParams(location.hash.substring(1));
-      const access_token = hash.get("access_token");
-      const refresh_token = hash.get("refresh_token");
-
-      if(!access_token || !refresh_token){
-        msg.textContent = "❌ Λείπει auth session. Άνοιξε ξανά το link από το email.";
-        msg.style.color = "#ffb3b3";
-      }else{
-        await supabase.auth.setSession({ access_token, refresh_token });
-      }
+    function setError(text){
+      msg.textContent = "❌ " + text;
+      msg.style.color = "#ffb3b3";
+    }
+    function setOk(text){
+      msg.textContent = "✅ " + text;
+      msg.style.color = "#7CFFB2";
     }
 
+    async function initSessionFromUrl() {
+      // Υποστηρίζει και ?code= (PKCE) και #access_token= (παλιό)
+      const qs = new URLSearchParams(location.search);
+      const code = qs.get("code");
 
-    // 2️⃣ ΑΛΛΑΓΗ PASSWORD
-    document.getElementById("saveBtn").addEventListener("click", async () => {
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) throw error;
+      }
+
+      // Αν είναι hash tokens, detectSessionInUrl θα τα πιάσει αυτόματα
+      // Αλλά κάνουμε ένα getSession για επιβεβαίωση
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+
+      if (!data?.session) {
+        throw new Error("Λείπει auth session. Άνοιξε ξανά το link από το email (σε αυτόν τον browser).");
+      }
+      return data.session;
+    }
+
+    // INIT
+    (async () => {
+      try {
+        saveBtn.disabled = true;
+        msg.textContent = "Φορτώνω session από το link...";
+        msg.style.color = "#cfe3ff";
+
+        await initSessionFromUrl();
+
+        setOk("Έτοιμο. Βάλε νέο κωδικό και πάτα αλλαγή.");
+        saveBtn.disabled = false;
+      } catch (e) {
+        console.error(e);
+        setError(e?.message || "Δεν μπόρεσα να ανοίξω session από το link.");
+        saveBtn.disabled = true;
+      }
+    })();
+
+    // CHANGE PASSWORD
+    saveBtn.addEventListener("click", async () => {
       const password = passInput.value.trim();
-      if(password.length < 6){
-        msg.textContent = "❌ Τουλάχιστον 6 χαρακτήρες.";
-        msg.style.color = "#ffb3b3";
+      if (password.length < 6) {
+        setError("Τουλάχιστον 6 χαρακτήρες.");
         return;
       }
 
-      const { error } = await supabase.auth.updateUser({ password });
-      if(error){
-        msg.textContent = "❌ " + error.message;
-        msg.style.color = "#ffb3b3";
-        return;
+      saveBtn.disabled = true;
+      msg.textContent = "Αλλάζω κωδικό...";
+      msg.style.color = "#cfe3ff";
+
+      try {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+
+        setOk("Ο κωδικός άλλαξε! Σε πάω στο login...");
+
+        try { await supabase.auth.signOut(); } catch(_) {}
+        setTimeout(() => location.replace("login.html"), 700);
+      } catch (e) {
+        console.error(e);
+        setError(e?.message || "Αποτυχία αλλαγής κωδικού.");
+        saveBtn.disabled = false;
       }
-
-      msg.textContent = "✅ Ο κωδικός άλλαξε! Μεταφέρεσαι στο login...";
-      msg.style.color = "#7CFFB2";
-
-      try { await supabase.auth.signOut(); } catch(e) {}
-      try { localStorage.removeItem("session"); } catch(e) {}
-      setTimeout(() => {
-        location.replace("login.html");
-      }, 700);
     });
   </script>
 </body>

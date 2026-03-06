@@ -24,15 +24,14 @@ Deno.serve(async (req) => {
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
     const STRIPE_PRICE_ID = Deno.env.get("STRIPE_PRICE_ID")!;
-    const DEFAULT_APP_URL = Deno.env.get("APP_URL") ?? "http://localhost:5500";
+    const APP_URL = Deno.env.get("APP_URL") ?? "http://localhost:5500";
 
     // Parse body (contest_code is required)
     const body = await req.json().catch(() => ({}));
     const contest_code = String(body?.contest_code ?? "").trim();
-    const purchase_code = String(body?.purchase_code ?? "HELP").trim();
-    const origin = typeof body?.origin === "string" ? body.origin : "";
+    const note = String(body?.note ?? "HELP").trim();
 
-    if (!contest_code) {
+        if (!contest_code) {
       return jsonRes({ error: "contest_code is required" }, 400);
     }
 
@@ -53,10 +52,15 @@ Deno.serve(async (req) => {
 
     const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
 
+<<<<<<< HEAD
     const appUrl = origin.startsWith("http") ? origin : DEFAULT_APP_URL;
 
     const success_url = `${appUrl}/dashboard.html?paid=1&contest_code=${encodeURIComponent(contest_code)}&code=${encodeURIComponent(purchase_code)}`;
     const cancel_url = `${appUrl}/pay.html?canceled=1`;
+=======
+    const success_url = `${APP_URL}/dashboard.html?paid=1&contest_code=${encodeURIComponent(contest_code)}`;
+    const cancel_url = `${APP_URL}/pay.html?canceled=1`;
+>>>>>>> bfefd81 (CMP update - fixed auth, reset password, help flow)
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -67,7 +71,11 @@ Deno.serve(async (req) => {
       metadata: {
         user_id,
         contest_code,
+<<<<<<< HEAD
         purchase_code,
+=======
+        note,
+>>>>>>> bfefd81 (CMP update - fixed auth, reset password, help flow)
       },
     });
 

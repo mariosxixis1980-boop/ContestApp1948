@@ -1,5 +1,26 @@
 import { supabase, ensureSupabaseConfig } from "./supabase.js";
 
+// Call a Supabase Edge Function using supabase-js.
+// This automatically calls: <SUPABASE_URL>/functions/v1/<functionName>
+// and attaches apikey + Authorization from the current session.
+async function callEdgeFunction(functionName, body) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not logged in");
+
+  const { data, error } = await supabase.functions.invoke(functionName, {
+    body: body ?? {},
+  });
+
+  if (error) {
+    const ctxBody = error?.context?.body;
+    const msg =
+      (typeof ctxBody === "string" && ctxBody) ? ctxBody :
+      (ctxBody ? JSON.stringify(ctxBody) : (error.message || "Edge Function error"));
+    throw new Error(msg);
+  }
+  return data;
+}
+
 const $ = (sel) => document.querySelector(sel);
 
 function setText(id, txt) {
@@ -24,13 +45,37 @@ function notice(msg, kind = "ok") {
   }, 4500);
 }
 
-// Show success message if returning from payment
-try {
-  const qs = new URLSearchParams(location.search);
-  if (qs.get("paid") === "1") {
-    notice("✅ Η αγορά HELP ολοκληρώθηκε!", "ok");
+// If we return from Stripe success_url, verify the session and grant HELP.
+async function maybeVerifyStripeReturn(session) {
+  try {
+    const url = new URL(window.location.href);
+    const paid = url.searchParams.get("paid");
+    const sessionId = url.searchParams.get("session_id");
+    const contestCode = url.searchParams.get("contest_code") || url.searchParams.get("code");
+
+    if (paid === "1" && sessionId && contestCode) {
+      notice("⏳ Επιβεβαίωση πληρωμής…", "warn");
+      await callEdgeFunction(
+        "verify-checkout",
+        { session_id: sessionId, contest_code: contestCode },
+        session.access_token,
+      );
+
+      // Remove params so refresh doesn't re-verify
+      url.searchParams.delete("paid");
+      url.searchParams.delete("session_id");
+      window.history.replaceState({}, "", url.toString());
+
+      notice("✅ Η αγορά HELP ολοκληρώθηκε και ενεργοποιήθηκε.", "ok");
+      return true;
+    }
+  } catch (e) {
+    console.warn("verify-checkout failed", e);
+    notice(`⚠️ Η πληρωμή έγινε, αλλά δεν ενεργοποιήθηκε το HELP: ${e?.message || e}`, "err");
   }
-} catch {}
+  return false;
+}
+
 
 function parseISO(s) {
   if (!s) return null;
@@ -94,16 +139,34 @@ function setCountdown(deadlineDate) {
 }
 
 async function safeGetProfile(userId) {
-  // Some projects don't have profiles.is_admin column -> avoid breaking.
+  // Some projects may not have profiles.is_admin or profiles.help_credits columns -> avoid breaking.
   const base = supabase.from("profiles");
-  let res = await base.select("id, username, is_admin").eq("id", userId).maybeSingle();
-  if (res.error && String(res.error.message || "").includes("is_admin")) {
-    res = await base.select("id, username").eq("id", userId).maybeSingle();
-  }
-  if (res.error) return { username: "user", is_admin: false };
-  return { username: res.data?.username ?? "user", is_admin: !!res.data?.is_admin };
-}
 
+  // Try the richest select first
+  let res = await base.select("id, username, is_admin, help_credits").eq("id", userId).maybeSingle();
+
+  // Fallback if is_admin column missing
+  if (res.error && String(res.error.message || "").includes("is_admin")) {
+    res = await base.select("id, username, help_credits").eq("id", userId).maybeSingle();
+  }
+
+  // Fallback if help_credits column missing
+  if (res.error && String(res.error.message || "").includes("help_credits")) {
+    // Try with is_admin only
+    res = await base.select("id, username, is_admin").eq("id", userId).maybeSingle();
+    if (res.error && String(res.error.message || "").includes("is_admin")) {
+      res = await base.select("id, username").eq("id", userId).maybeSingle();
+    }
+  }
+
+  if (res.error) return { username: "user", is_admin: false, help_credits: 0 };
+
+  return {
+    username: res.data?.username ?? "user",
+    is_admin: !!res.data?.is_admin,
+    help_credits: Number(res.data?.help_credits ?? 0),
+  };
+}
 function isDeadlinePassed(deadlineIso) {
   const d = parseISO(deadlineIso);
   if (!d) return false;
@@ -197,6 +260,9 @@ async function main() {
   }
   const user = sessData.session.user;
 
+
+  // If returning from Stripe, verify payment and grant HELP before loading UI/state
+  await maybeVerifyStripeReturn(sessData.session);
   // Wire logout
   const lo = document.getElementById("lo");
   if (lo) {
@@ -326,8 +392,34 @@ const helpRes = await supabase
   .eq("contest_code", code)
   .maybeSingle();
 
+// HELP credits storage differs between versions:
+// - Some DBs store credits in profiles.help_credits
+// - Others store credits in help_purchases.remaining
+// - Some setups only store a purchase row (remaining not set)
+// In the last case, default to 3 credits per purchase.
+const DEFAULT_HELP_PER_PURCHASE = 3;
+
+const remainingFromPurchase = (() => {
+  const v = helpRes.data?.remaining;
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+})();
+
+const remainingFromProfile = (() => {
+  const v = profile.help_credits;
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+})();
+
+let remaining = remainingFromPurchase ?? remainingFromProfile;
+if (remaining === null) {
+  remaining = helpRes.data ? DEFAULT_HELP_PER_PURCHASE : 0;
+}
+
 const helpState = {
-  remaining: Number(helpRes.data?.remaining || 0),
+  remaining,
   used: Array.isArray(helpRes.data?.used_match_ids) ? helpRes.data.used_match_ids : [],
 };
 
@@ -609,7 +701,9 @@ buyBtn.addEventListener("click", () => {
       return;
     }
     // Payment flow happens in pay.html (Stripe-ready). No secrets in frontend.
-    location.href = "pay.html";
+    // Pass contest_code so pay.html can start checkout reliably.
+    try { localStorage.setItem("contestCode", String(code || "")); } catch {}
+    location.href = `pay.html?contest_code=${encodeURIComponent(String(code || ""))}`;
   });
 }
 

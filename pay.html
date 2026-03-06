@@ -67,13 +67,18 @@ border:1px solid var(--b);background:rgba(0,0,0,.55);display:none;z-index:9999;m
   </div>
 
 <script type="module">
+<<<<<<< HEAD
 import { supabase } from "./supabase.js";
+=======
+import { supabase, ensureSupabaseConfig } from "./supabase.js";
+>>>>>>> bfefd81 (CMP update - fixed auth, reset password, help flow)
 
 const $ = (id) => document.getElementById(id);
 const show = (id, txt) => { const el=$(id); el.textContent = txt; el.style.display="block"; };
 const hide = (id) => { const el=$(id); el.style.display="none"; };
 
 function getContestCode() {
+<<<<<<< HEAD
   return (localStorage.getItem("contestCode") || "").trim();
 }
 
@@ -88,6 +93,18 @@ async function getActiveContest() {
   return data || null;
 }
 
+=======
+  // Prefer URL param so pay.html can be opened directly from dashboard redirect.
+  const qs = new URLSearchParams(location.search);
+  const fromUrl = (qs.get("contest_code") || "").trim();
+  if (fromUrl) {
+    localStorage.setItem("contestCode", fromUrl);
+    return fromUrl;
+  }
+  return (localStorage.getItem("contestCode") || "").trim();
+}
+
+>>>>>>> bfefd81 (CMP update - fixed auth, reset password, help flow)
 function setContestPill() {
   const code = getContestCode();
   $("contestPill").textContent = code ? ("Contest: " + code) : "Contest: —";
@@ -95,7 +112,11 @@ function setContestPill() {
 
 async function ensureAuth() {
   const { data } = await supabase.auth.getSession();
+<<<<<<< HEAD
   return data?.session ?? null; // return full session
+=======
+  return data?.session ?? null;
+>>>>>>> bfefd81 (CMP update - fixed auth, reset password, help flow)
 }
 
 async function startCheckout() {
@@ -106,6 +127,7 @@ async function startCheckout() {
 
   try {
     const session = await ensureAuth();
+<<<<<<< HEAD
     if (!session?.user) {
       show("msgBad", "Πρέπει να κάνεις login πρώτα.");
       // If opened directly without logging in, the Edge Function will return 401.
@@ -142,6 +164,39 @@ async function startCheckout() {
     if (error) throw error;
     if (!data?.url) throw new Error("Δεν επέστρεψε checkout URL.");
 
+=======
+    if (!session?.user || !session?.access_token) {
+      show("msgBad", "Πρέπει να κάνεις login πρώτα.");
+      return;
+    }
+
+    const contest_code = getContestCode();
+    if (!contest_code) {
+      show("msgBad", "Δεν βρέθηκε contestCode. Γύρνα Dashboard και ξαναπάτα HELP.");
+      return;
+    }
+
+    // ✅ Robust call: direct fetch with proper Authorization Bearer (user JWT)
+    // This avoids the common "Invalid JWT" when the function requires JWT verification.
+    const { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY } = await ensureSupabaseConfig();
+
+    const r = await fetch(`${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/create-checkout-session`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ contest_code, note: "HELP" })
+    });
+
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      throw new Error(data?.message || data?.error || `HTTP ${r.status}`);
+    }
+    if (!data?.url) throw new Error("Δεν επέστρεψε checkout URL.");
+
+>>>>>>> bfefd81 (CMP update - fixed auth, reset password, help flow)
     window.location.href = data.url;
   } catch (e) {
     console.error(e);
