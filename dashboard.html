@@ -179,11 +179,39 @@
 
   <script>
     window.__cmpDeferredPrompt = null;
+    const installBtn = document.getElementById("installBtn");
+
+    function showInstallFallback() {
+      alert("Για εγκατάσταση πάτα ⋮ και μετά «Προσθήκη στην αρχική οθόνη» ή «Install app».");
+    }
+
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       window.__cmpDeferredPrompt = e;
-      const btn = document.getElementById("installBtn");
-      if (btn) btn.style.display = "inline-flex";
+      if (installBtn) installBtn.style.display = "inline-flex";
+    });
+
+    if (installBtn) {
+      installBtn.addEventListener("click", async () => {
+        try {
+          if (window.__cmpDeferredPrompt) {
+            window.__cmpDeferredPrompt.prompt();
+            await window.__cmpDeferredPrompt.userChoice;
+            window.__cmpDeferredPrompt = null;
+            installBtn.style.display = "none";
+          } else {
+            showInstallFallback();
+          }
+        } catch (err) {
+          console.warn("Install prompt failed", err);
+          showInstallFallback();
+        }
+      });
+    }
+
+    window.addEventListener("appinstalled", () => {
+      window.__cmpDeferredPrompt = null;
+      if (installBtn) installBtn.style.display = "none";
     });
 
     if ("serviceWorker" in navigator) {
