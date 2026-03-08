@@ -182,10 +182,10 @@ function matchTitle(m) {
 function buildMatchRow(match, pick, disabled) {
   const div = document.createElement("div");
   div.className = "match";
-  if (disabled) div.classList.add("locked"); div.style.display="flex"; div.style.justifyContent="space-between"; div.style.alignItems="center"; div.style.gap="10px";
+  if (disabled) div.classList.add("locked");
 
   const left = document.createElement("div");
-  left.style.flex="1";
+  left.className = "matchLeft";
   const title = document.createElement("div");
   title.className = "matchTitle";
   title.textContent = matchTitle(match);
@@ -199,7 +199,13 @@ function buildMatchRow(match, pick, disabled) {
   left.appendChild(time);
 
   const right = document.createElement("div");
-  right.style.display="flex"; right.style.alignItems="center"; right.style.gap="8px";
+  right.className = "matchRight";
+
+  const metaRow = document.createElement("div");
+  metaRow.className = "matchMeta";
+
+  const actionsRow = document.createElement("div");
+  actionsRow.className = "matchActions";
 
   const sel = document.createElement("select");
   sel.dataset.matchId = match.id;
@@ -214,13 +220,11 @@ function buildMatchRow(match, pick, disabled) {
 
 const finalEl = document.createElement("span");
 finalEl.className = "mini";
-finalEl.style.marginLeft = "6px";
 finalEl.style.opacity = "0.9";
 finalEl.textContent = "Τελικό: —";
 
 const statusEl = document.createElement("span");
 statusEl.className = "mini";
-statusEl.style.marginLeft = "6px";
 statusEl.style.fontWeight = "700";
 statusEl.textContent = "";
 
@@ -237,11 +241,13 @@ const btn = document.createElement("button");
   helpBtn.textContent = "HELP";
   helpBtn.dataset.matchId = match.id;
   helpBtn.disabled = !!disabled;
-right.appendChild(sel);
-  right.appendChild(finalEl);
-  right.appendChild(statusEl);
-  right.appendChild(helpBtn);
-  right.appendChild(btn);
+  metaRow.appendChild(sel);
+  metaRow.appendChild(finalEl);
+  metaRow.appendChild(statusEl);
+  actionsRow.appendChild(helpBtn);
+  actionsRow.appendChild(btn);
+  right.appendChild(metaRow);
+  right.appendChild(actionsRow);
 
   div.appendChild(left);
   div.appendChild(right);
@@ -269,6 +275,21 @@ async function main() {
     lo.addEventListener("click", async () => {
       await supabase.auth.signOut();
       location.href = "login.html";
+    });
+  }
+
+  const installBtn = document.getElementById("installBtn");
+  if (installBtn) {
+    installBtn.addEventListener("click", async () => {
+      const promptEvent = window.__cmpDeferredPrompt;
+      if (!promptEvent) {
+        notice("Άνοιξε το menu του browser και πάτησε Add to Home Screen / Install App.", "warn");
+        return;
+      }
+      promptEvent.prompt();
+      try { await promptEvent.userChoice; } catch {}
+      window.__cmpDeferredPrompt = null;
+      installBtn.style.display = "none";
     });
   }
 

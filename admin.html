@@ -4,6 +4,10 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Admin • Cyprus Match Predict</title>
+<meta name="theme-color" content="#070b13" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<link rel="manifest" href="./manifest.webmanifest" />
+<link rel="apple-touch-icon" href="./icon-192.png" />
 <style>
 :root{
   --bg:#070b13;--b:rgba(255,255,255,.12);
@@ -212,5 +216,12 @@ hr{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0}
 <script type="module" src="admin.js"></script>
 
 <!-- ✅ FIX: admin guard ΧΩΡΙΣ redirect loop -->
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("SW register failed", err));
+  });
+}
+</script>
 </body>
 </html>

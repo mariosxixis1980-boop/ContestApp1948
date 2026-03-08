@@ -1,12 +1,12 @@
-// Service Worker (disabled)
-// This project doesn't rely on offline caching.
-// Keeping an empty SW avoids syntax errors if the browser tries to load it.
-
-self.addEventListener('install', (event) => {
-  // Activate immediately
+// Minimal Service Worker for installability only (no caching logic)
+self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener("fetch", () => {
+  // Intentionally no caching to avoid stale contest/admin state.
 });

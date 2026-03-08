@@ -4,6 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CMP - Dashboard</title>
+  <meta name="theme-color" content="#070b13" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
   <style>
     :root{
       --bg:#070b13; --border:rgba(255,255,255,.12);
@@ -106,6 +111,27 @@
   box-shadow: 0 0 14px rgba(0,255,0,.35);
 }
 
+
+    .match{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+    .matchLeft{flex:1;min-width:0}
+    .matchRight{display:flex;flex-direction:column;gap:8px;min-width:320px;max-width:420px}
+    .matchMeta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}
+    .matchActions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+    .matchActions .btn{padding:10px 12px}
+    #installBtn{display:none}
+    @media (max-width:700px){
+      body{padding:12px}
+      .wrap{width:100%}
+      .card{padding:14px;border-radius:18px}
+      h1{font-size:32px}
+      .match{flex-direction:column;gap:10px}
+      .matchRight{width:100%;min-width:0;max-width:none}
+      .matchMeta{justify-content:flex-start}
+      .matchMeta select{width:100%;min-width:0}
+      .matchActions{width:100%;justify-content:stretch}
+      .matchActions .btn{flex:1 1 0;min-width:0}
+      .pill{max-width:100%}
+    }
     .footer-legal{margin:22px auto 0;max-width:520px;text-align:center;font-size:13px;color:rgba(255,255,255,.65)}
     .footer-legal a{margin:0 10px;color:rgba(255,255,255,.8);text-decoration:none}
     .footer-legal a:hover{text-decoration:underline}
@@ -121,6 +147,7 @@
         <a class="btn" href="leaderboard.html">🏆 Leaderboard</a>
         <a class="btn" id="adminLink" href="admin.html" style="display:none;">🛠 Admin</a>
         <button class="btn" id="lo" type="button">🚪 Logout</button>
+        <button class="btn bl" id="installBtn" type="button">📲 Install App</button>
         <div class="pill" id="userPill">Χρήστης: -</div>
       </div>
 
@@ -149,6 +176,22 @@
     <a href="terms.html" target="_blank">Όροι</a>
     <a href="privacy.html" target="_blank">Privacy</a>
   </footer>
+
+  <script>
+    window.__cmpDeferredPrompt = null;
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      window.__cmpDeferredPrompt = e;
+      const btn = document.getElementById("installBtn");
+      if (btn) btn.style.display = "inline-flex";
+    });
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("SW register failed", err));
+      });
+    }
+  </script>
   <script type="module" src="./dashboard.js"></script>
 </body>
 </html>
