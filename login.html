@@ -166,6 +166,9 @@
 <script type="module">
     import { getSupabase, clearSupabaseConfig } from "./supabase.js";
 const ADMIN_EMAILS = ["mariosxisis1980@gmail.com","mariosxixis1980@gmail.com","mariosxis1980@gmail.com"]; // fallback (auto-promote)
+const __params = new URLSearchParams(window.location.search);
+const __adminUnavailable = __params.get("admin_unavailable") === "1";
+const __adminUnavailableMsg = "Δεν είναι διαθέσιμο αυτή τη στιγμή.";
 
 async function getIsAdminForSession(session){
   const email = (session?.user?.email || "").toLowerCase();
@@ -497,7 +500,7 @@ async function doLogin(){
           const username = (email.split('@')[0] || 'user').trim();
           localStorage.setItem('session', JSON.stringify({ username, email, isAdmin }));
           finishBoot(false);
-          return location.replace(isAdmin ? 'admin.html' : 'dashboard.html');
+          if (!__adminUnavailable) { return location.replace(isAdmin ? 'admin.html' : 'dashboard.html'); }
         }
       }catch(e){
         console.warn('getSession init error:', e);
@@ -507,6 +510,11 @@ async function doLogin(){
       showLogin();
       await renderNextContest();
       finishBoot(true);
+      if (__adminUnavailable) {
+        setInlineMsg("loginErr", __adminUnavailableMsg);
+        setTimeout(() => setInlineMsg("loginErr", ""), 3000);
+        try { history.replaceState({}, "", location.pathname); } catch(_) {}
+      }
 
 // Quick check: if the publishable (anon) key is wrong you'll get 401/Invalid API key.
 const cfg = await assertSupabaseWorks();
@@ -568,6 +576,15 @@ if (!cfg.ok) {
         }
         // logged in -> redirect (no intermediate screen)
         const isAdmin = await getIsAdminForSession(session);
+        if (__adminUnavailable) {
+          showLogin();
+          await renderNextContest();
+          finishBoot(true);
+          setInlineMsg("loginErr", __adminUnavailableMsg);
+          setTimeout(() => setInlineMsg("loginErr", ""), 3000);
+          try { history.replaceState({}, "", location.pathname); } catch(_) {}
+          return;
+        }
         finishBoot(false);
         window.location.href = isAdmin ? "admin.html" : "dashboard.html";
       });

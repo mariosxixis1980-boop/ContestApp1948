@@ -179,40 +179,42 @@
       <div class="brand">
         <div class="logo" aria-hidden="true"></div>
         <div>
-          <h1>Κατάταξη</h1>
-          <div class="sub">Cyprus Match Predict • Μόνο ο ενεργός διαγωνισμός</div>
+          <h1 id="lbTitle">Κατάταξη</h1>
+          <div class="sub" id="lbSub">Cyprus Match Predict • Μόνο ο ενεργός διαγωνισμός</div>
         </div>
       </div>
 
       <div class="meta">
         <div class="pill" id="myRankPill"><span class="dot"></span><span>Η θέση σου: —</span></div>
+        <button class="btn" id="lbLangEl" type="button">🇬🇷 EL</button>
+        <button class="btn" id="lbLangEn" type="button">🇬🇧 EN</button>
         <div class="pill"><span class="dot"></span><span id="contestPill">Φόρτωση διαγωνισμού…</span></div>
-        <a class="btn" href="./dashboard.html">← Πίσω στο Dashboard</a>
+        <a class="btn" id="backDashBtn" href="./dashboard.html">← Πίσω στο Dashboard</a>
       </div>
     </div>
 
     <div class="card">
       <div class="cardHead">
         <div class="hint">
-          <div><strong>Κριτήρια ισοβαθμίας:</strong> Πόντοι → Μπόνους → Καλύτερο σερί μπόνους → Γύροι με 1 λάθος</div>
-          <div>Αν δεν υπάρχουν δεδομένα ακόμα, περίμενε να μπουν αποτελέσματα αγώνων.</div>
+          <div id="tieHint"><strong>Κριτήρια ισοβαθμίας:</strong> Πόντοι → Μπόνους → Καλύτερο σερί μπόνους → Γύροι με 1 λάθος</div>
+          <div id="emptyHint">Αν δεν υπάρχουν δεδομένα ακόμα, περίμενε να μπουν αποτελέσματα αγώνων.</div>
         </div>
         <div class="badge" title="Αυτό το leaderboard ενημερώνεται από views στη βάση">
-          <span class="b"></span> Live από Supabase
+          <span class="b"></span> <span id="liveBadgeText">Live από Supabase</span>
         </div>
       </div>
 	      <div id="winnerBox" class="winner"></div>
 
       <div class="tableWrap">
-        <table aria-label="Πίνακας Κατάταξης">
+        <table id="leaderboardTable" aria-label="Πίνακας Κατάταξης">
           <thead>
             <tr>
               <th style="width:72px;">#</th>
-              <th>Παίκτης</th>
-              <th style="width:110px;">Πόντοι</th>
-              <th style="width:110px;">Μπόνους</th>
-              <th style="width:190px;">Καλύτερο σερί</th>
-              <th style="width:170px;">Γύροι 1 λάθος</th>
+              <th id="thPlayer">Παίκτης</th>
+              <th id="thPoints" style="width:110px;">Πόντοι</th>
+              <th id="thBonus" style="width:110px;">Μπόνους</th>
+              <th id="thStreak" style="width:190px;">Καλύτερο σερί</th>
+              <th id="thOneWrong" style="width:170px;">Γύροι 1 λάθος</th>
             </tr>
           </thead>
           <tbody id="leaderboard-body">
@@ -221,18 +223,18 @@
         </table>
       
       <div id="prizeBox" class="prizeBox" style="display:none;">
-        <div class="prizeTitle">🎁 Δώρο Διαγωνισμού</div>
+        <div class="prizeTitle" id="prizeTitle">🎁 Δώρο Διαγωνισμού</div>
         <div id="prizeText" class="prizeText"></div>
       </div>
 
       <div id="goodLuckBox" class="goodLuckBox" style="display:none;">
-        Καλή επιτυχία και καλή διασκέδαση
+        <span id="goodLuckText">Καλή επιτυχία και καλή διασκέδαση</span>
       </div>
 
 </div>
 
       <div class="foot">
-        * «Μπόνους» = πόσες φορές πήρες τα +2. «Καλύτερο σερί» = συνεχόμενες φορές που πήρες μπόνους.
+        <span id="footNote">* «Μπόνους» = πόσες φορές πήρες τα +2. «Καλύτερο σερί» = συνεχόμενες φορές που πήρες μπόνους.</span>
       </div>
     </div>
 

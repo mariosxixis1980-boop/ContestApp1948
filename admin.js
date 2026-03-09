@@ -1,5 +1,14 @@
 import { supabase } from "./supabase.js";
 
+const __isMobileAdminBlocked = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+  ((window.matchMedia && window.matchMedia('(pointer: coarse)').matches) && window.innerWidth <= 1024) ||
+  window.innerWidth <= 700;
+
+if (__isMobileAdminBlocked) {
+  location.replace('login.html?admin_unavailable=1');
+  throw new Error('Admin blocked on mobile');
+}
+
 ; (async () => {
 
   /* =========================

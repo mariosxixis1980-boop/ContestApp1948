@@ -1,5 +1,24 @@
 import { supabase } from './supabase.js';
 
+const LB_LANG_KEY = 'CMP_LANG';
+function getLang(){ return localStorage.getItem(LB_LANG_KEY) === 'en' ? 'en' : 'el'; }
+let currentLang = getLang();
+function setLang(lang){ localStorage.setItem(LB_LANG_KEY, lang === 'en' ? 'en' : 'el'); location.reload(); }
+const LB_I18N = {
+  el: { title:'Κατάταξη', sub:'Cyprus Match Predict • Μόνο ο ενεργός διαγωνισμός', myPos:'Η θέση σου', loadingContest:'Φόρτωση διαγωνισμού…', backDash:'← Πίσω στο Dashboard', tieHint:'<strong>Κριτήρια ισοβαθμίας:</strong> Πόντοι → Μπόνους → Καλύτερο σερί μπόνους → Γύροι με 1 λάθος', emptyHint:'Αν δεν υπάρχουν δεδομένα ακόμα, περίμενε να μπουν αποτελέσματα αγώνων.', liveBadge:'Live από Supabase', player:'Παίκτης', points:'Πόντοι', bonus:'Μπόνους', streak:'Καλύτερο σερί', oneWrong:'Γύροι 1 λάθος', prizeTitle:'🎁 Δώρο Διαγωνισμού', goodLuck:'Καλή επιτυχία και καλή διασκέδαση', foot:'* «Μπόνους» = πόσες φορές πήρες τα +2. «Καλύτερο σερί» = συνεχόμενες φορές που πήρες μπόνους.', noActive:'Δεν υπάρχει ενεργός διαγωνισμός', loadContestErr:'Σφάλμα φόρτωσης διαγωνισμού', noData:'Δεν υπάρχουν δεδομένα ακόμα.', rankEmpty:'Η θέση σου: —', rankVal:'Η θέση σου: #{rank}', winner:'🏆 <b>Συγχαρητήρια!</b> Είσαι ο Νικητής του διαγωνισμού.', lbError:'Σφάλμα φόρτωσης leaderboard', contest:'Contest', round:'Αγωνιστική', aria:'Πίνακας Κατάταξης' },
+  en: { title:'Leaderboard', sub:'Cyprus Match Predict • Active contest only', myPos:'Your position', loadingContest:'Loading contest…', backDash:'← Back to Dashboard', tieHint:'<strong>Tie-break criteria:</strong> Points → Bonus → Best bonus streak → Rounds with 1 wrong', emptyHint:'If there is no data yet, wait until match results are entered.', liveBadge:'Live from Supabase', player:'Player', points:'Points', bonus:'Bonus', streak:'Best streak', oneWrong:'Rounds with 1 wrong', prizeTitle:'🎁 Contest Prize', goodLuck:'Good luck and have fun', foot:'* “Bonus” = how many times you got the +2. “Best streak” = consecutive times you got bonus.', noActive:'No active contest', loadContestErr:'Failed to load contest', noData:'No data yet.', rankEmpty:'Your position: —', rankVal:'Your position: #{rank}', winner:'🏆 <b>Congratulations!</b> You are the contest winner.', lbError:'Failed to load leaderboard', contest:'Contest', round:'Round', aria:'Leaderboard table' }
+};
+function t(key, vars={}){ const s=(LB_I18N[currentLang]&&LB_I18N[currentLang][key])||LB_I18N.el[key]||key; return s.replace(/#\{(\w+)\}/g, (_,k)=> vars[k] ?? ''); }
+function applyLeaderboardStaticTexts(){
+  const set=(id,key,html=false)=>{ const el=document.getElementById(id); if(!el) return; if(html) el.innerHTML=t(key); else el.textContent=t(key); };
+  set('lbTitle','title'); set('lbSub','sub'); set('backDashBtn','backDash'); set('tieHint','tieHint',true); set('emptyHint','emptyHint'); set('liveBadgeText','liveBadge'); set('thPlayer','player'); set('thPoints','points'); set('thBonus','bonus'); set('thStreak','streak'); set('thOneWrong','oneWrong'); set('prizeTitle','prizeTitle'); set('goodLuckText','goodLuck'); set('footNote','foot');
+  const my=document.getElementById('myRankPill'); if(my && !my.dataset.dynamic) my.textContent=t('rankEmpty');
+  const cp=document.getElementById('contestPill'); if(cp && !cp.dataset.dynamic) cp.textContent=t('loadingContest');
+  const tbl=document.getElementById('leaderboardTable'); if(tbl) tbl.setAttribute('aria-label', t('aria'));
+  const elb=document.getElementById('lbLangEl'); const enb=document.getElementById('lbLangEn'); if(elb) elb.onclick=()=>setLang('el'); if(enb) enb.onclick=()=>setLang('en');
+}
+applyLeaderboardStaticTexts();
+
 function setError(msg, details) {
   const box = document.getElementById('errBox');
   if (!box) return;
@@ -47,17 +66,17 @@ async function loadActiveContestPill() {
     if (!pill) return;
 
     if (!data) {
-      pill.textContent = 'Δεν υπάρχει ενεργός διαγωνισμός';
+      pill.textContent = t('noActive');
       return;
     }
 
-    const roundTxt = (data.current_round ?? null) !== null ? `• Αγωνιστική: ${data.current_round}` : '';
+    const roundTxt = (data.current_round ?? null) !== null ? `• ${t('round')}: ${data.current_round}` : '';
     const titleTxt = data.title ? `• ${data.title}` : '';
-    pill.textContent = `Contest: ${data.code} ${roundTxt} ${titleTxt}`.replace(/\s+/g, ' ').trim();
+    pill.textContent = `${t('contest')}: ${data.code} ${roundTxt} ${titleTxt}`.replace(/\s+/g, ' ').trim(); pill.dataset.dynamic='1';
   } catch (e) {
     console.error('Active contest pill error:', e);
     const pill = document.getElementById('contestPill');
-    if (pill) pill.textContent = 'Σφάλμα φόρτωσης διαγωνισμού';
+    if (pill) pill.textContent = t('loadContestErr');
   }
 }
 
@@ -84,12 +103,12 @@ async function loadLeaderboard() {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td class="rank">—</td>
-        <td colspan="5">Δεν υπάρχουν δεδομένα ακόμα.</td>
+        <td colspan="5">${t('noData')}</td>
       `;
       tableBody.appendChild(tr);
 
       const pill = document.getElementById('myRankPill');
-      if (pill) pill.textContent = 'Η θέση σου: —';
+      if (pill) { pill.textContent = t('rankEmpty'); pill.dataset.dynamic='1'; }
       return;
     }
 
@@ -101,7 +120,7 @@ async function loadLeaderboard() {
     }
 
     const myPill = document.getElementById('myRankPill');
-    if (myPill) myPill.textContent = myRank ? `Η θέση σου: #${myRank}` : 'Η θέση σου: —';
+    if (myPill) { myPill.textContent = myRank ? t('rankVal', { rank: myRank }) : t('rankEmpty'); myPill.dataset.dynamic='1'; }
 
 	    // Winner banner (Final Week): show ONLY to the winner when finalWeek is ON and contest is LOCKED
 	    try {
@@ -115,7 +134,7 @@ async function loadLeaderboard() {
 	        const top = data[0];
 	        if (String(top?.user_id || '') === String(myId)) {
 	          winnerBox.style.display = 'block';
-	          winnerBox.innerHTML = `🏆 <b>Συγχαρητήρια!</b> Είσαι ο Νικητής του διαγωνισμού.`;
+	          winnerBox.innerHTML = t('winner');
 	        } else {
 	          winnerBox.style.display = 'none';
 	          winnerBox.textContent = '';
@@ -151,7 +170,7 @@ async function loadLeaderboard() {
     });
   } catch (e) {
     console.error('Leaderboard load error:', e);
-    setError('Σφάλμα φόρτωσης leaderboard', e?.message ?? String(e));
+    setError(t('lbError'), e?.message ?? String(e));
   }
 }
 
