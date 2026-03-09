@@ -1,39 +1,11 @@
 import { supabase, ensureSupabaseConfig } from "./supabase.js";
 
-const LANG_KEY = "CMP_LANG";
-function getLang() { return localStorage.getItem(LANG_KEY) === "en" ? "en" : "el"; }
-let currentLang = getLang();
-function setLang(lang) { localStorage.setItem(LANG_KEY, lang === "en" ? "en" : "el"); location.reload(); }
-const I18N = {
-  el: {
-    pageTitle:"⚽ Dashboard", pageSub:"Βάλε 1 / X / 2, πάτα Save (ή αλλάζει αυτόματα). Κλείδωμα πριν το deadline.", leaderboardBtn:"🏆 Leaderboard", logout:"🚪 Logout", install:"📲 Install App", user:"Χρήστης", contest:"Contest", round:"Αγωνιστική", deadline:"Deadline", status:"Κατάσταση", finalWeek:"🏁 Final Week", buyHelp:"🧠 Αγορά HELP (€1,99)", lockPred:"🔒 Κλείδωμα προβλέψεων", pick:"Pick: -", final:"Τελικό", correct:"Σωστό", wrong:"Λάθος", lockedOpen:"Κατάσταση: 🟢 Ανοιχτές", lockedClosed:"Κατάσταση: 🔒 Κλειδωμένες", noContest:"Δεν υπάρχει ενεργός διαγωνισμός", loadContestErr:"Σφάλμα φόρτωσης διαγωνισμού", lateStart:"⛔ Ο διαγωνισμός ξεκίνησε. Θα ενημερώσουμε για τον επόμενο 🙌", noMatches:"❌ Δεν υπάρχουν αγώνες.", predLoadErr:"Σφάλμα φόρτωσης προβλέψεων", predsLocked:"Οι προβλέψεις είναι κλειδωμένες.", deadlineNoChange:"Πέρασε το deadline. Δεν μπορείς να αλλάξεις πρόβλεψη.", saveFail:"Αποτυχία αποθήκευσης πρόβλεψης.", saving:"Saving…", saved:"Saved", save:"Save", savedNotice:"✅ Αποθηκεύτηκε", help:"HELP", helpUsed:"HELP ✓", helpNoMore:"Δεν έχεις άλλα HELP διαθέσιμα.", helpSaveErr:"❌ Σφάλμα αποθήκευσης HELP.", helpRemoved:"↩️ Αφαιρέθηκε HELP από τον αγώνα.", helpAdded:"✅ Έβαλες HELP στον αγώνα.", contestStartedCantBuy:"⛔ Ο διαγωνισμός ξεκίνησε", contestStartedCantBuyNotice:"⛔ Ο διαγωνισμός ξεκίνησε — δεν μπορείς να αγοράσεις.", helpAfterLock:"🔒 Δεν μπορείς να αγοράσεις HELP μετά το κλείδωμα/deadline.", helpActive:"✅ HELP ενεργό ({remaining} διαθέσιμα)", lockButtonLocked:"🔒 Κλειδωμένες", lockAlready:"Ήδη κλειδωμένες.", deadlineAutoLock:"Πέρασε το deadline. Κλείδωμα αυτόματα.", youLocked:"🔒 Κλείδωσες τις προβλέψεις σου!", lockFail:"❌ Αποτυχία κλειδώματος.", deadlineExpired:"⏳ Έληξε το deadline. Οι προβλέψεις είναι κλειδωμένες.", verifyPayment:"⏳ Επιβεβαίωση πληρωμής…", paymentOk:"✅ Η αγορά HELP ολοκληρώθηκε και ενεργοποιήθηκε.", paymentFail:"⚠️ Η πληρωμή έγινε, αλλά δεν ενεργοποιήθηκε το HELP: {msg}", loginRequired:"Not logged in", buyHelpLink:"pay.html", autoConfirm1:"Για ασφάλεια: Είσαι σίγουρος ότι πρόβλεψες σε ΟΛΑ τα παιχνίδια;", autoConfirm2:"Είσαι σίγουρος; Να κλειδώσω τις προβλέψεις σου τώρα;", admin:"🛠 Admin"
-  },
-  en: {
-    pageTitle:"⚽ Dashboard", pageSub:"Choose 1 / X / 2, press Save (or it autosaves). Locked before deadline.", leaderboardBtn:"🏆 Leaderboard", logout:"🚪 Logout", install:"📲 Install App", user:"User", contest:"Contest", round:"Round", deadline:"Deadline", status:"Status", finalWeek:"🏁 Final Week", buyHelp:"🧠 Buy HELP (€1.99)", lockPred:"🔒 Lock predictions", pick:"Pick: -", final:"Final", correct:"Correct", wrong:"Wrong", lockedOpen:"Status: 🟢 Open", lockedClosed:"Status: 🔒 Locked", noContest:"No active contest", loadContestErr:"Failed to load contest", lateStart:"⛔ The contest has started. We will update you for the next one 🙌", noMatches:"❌ No matches available.", predLoadErr:"Failed to load predictions", predsLocked:"Predictions are locked.", deadlineNoChange:"The deadline has passed. You cannot change your prediction.", saveFail:"Failed to save prediction.", saving:"Saving…", saved:"Saved", save:"Save", savedNotice:"✅ Saved", help:"HELP", helpUsed:"HELP ✓", helpNoMore:"You have no HELP left.", helpSaveErr:"❌ Failed to save HELP.", helpRemoved:"↩️ HELP removed from this match.", helpAdded:"✅ HELP added to this match.", contestStartedCantBuy:"⛔ Contest already started", contestStartedCantBuyNotice:"⛔ The contest has started — you cannot buy HELP.", helpAfterLock:"🔒 You cannot buy HELP after lock/deadline.", helpActive:"✅ HELP active ({remaining} available)", lockButtonLocked:"🔒 Locked", lockAlready:"Already locked.", deadlineAutoLock:"The deadline has passed. Auto-lock applied.", youLocked:"🔒 Your predictions are locked!", lockFail:"❌ Failed to lock predictions.", deadlineExpired:"⏳ The deadline has ended. Predictions are locked.", verifyPayment:"⏳ Verifying payment…", paymentOk:"✅ HELP purchase completed and activated.", paymentFail:"⚠️ Payment succeeded, but HELP was not activated: {msg}", loginRequired:"Not logged in", buyHelpLink:"pay.html", autoConfirm1:"For safety: are you sure you predicted ALL matches?", autoConfirm2:"Are you sure you want to lock your predictions now?", admin:"🛠 Admin"
-  }
-};
-function t(key, vars = {}) { const s = (I18N[currentLang] && I18N[currentLang][key]) || I18N.el[key] || key; return s.replace(/\{(\w+)\}/g, (_,k)=> vars[k] ?? ''); }
-function applyDashboardStaticTexts(){
-  const map = { pageTitle:'pageTitle', pageSub:'pageSub', leaderboardBtn:'leaderboardBtn', lo:'logout', installBtn:'install', finalWeekPill:'finalWeek', buyBtn:'buyHelp', lockBtn:'lockPred' };
-  for (const [id,key] of Object.entries(map)) { const el=document.getElementById(id); if(el) el.textContent=t(key); }
-  const adminLink=document.getElementById('adminLink'); if(adminLink) adminLink.textContent=t('admin');
-  const userPill=document.getElementById('userPill'); if(userPill && !userPill.textContent.trim()) userPill.textContent=t('user')+': -';
-  const contestInfo=document.getElementById('contestInfo'); if(contestInfo && !contestInfo.textContent.trim()) contestInfo.textContent=t('contest')+': -';
-  const roundInfo=document.getElementById('roundInfo'); if(roundInfo && !roundInfo.textContent.trim()) roundInfo.textContent=t('round')+': -';
-  const deadlineInfo=document.getElementById('deadlineInfo'); if(deadlineInfo && !deadlineInfo.textContent.trim()) deadlineInfo.textContent=t('deadline')+': -';
-  const statusPill=document.getElementById('statusPill'); if(statusPill && !statusPill.textContent.trim()) statusPill.textContent=t('status')+': -';
-  const elBtn=document.getElementById('langEl'); const enBtn=document.getElementById('langEn');
-  if(elBtn) elBtn.onclick = () => setLang('el');
-  if(enBtn) enBtn.onclick = () => setLang('en');
-}
-applyDashboardStaticTexts();
-
 // Call a Supabase Edge Function using supabase-js.
 // This automatically calls: <SUPABASE_URL>/functions/v1/<functionName>
 // and attaches apikey + Authorization from the current session.
 async function callEdgeFunction(functionName, body) {
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error(t("loginRequired"));
+  if (!session) throw new Error("Not logged in");
 
   const { data, error } = await supabase.functions.invoke(functionName, {
     body: body ?? {},
@@ -82,7 +54,7 @@ async function maybeVerifyStripeReturn(session) {
     const contestCode = url.searchParams.get("contest_code") || url.searchParams.get("code");
 
     if (paid === "1" && sessionId && contestCode) {
-      notice(t("verifyPayment"), "warn");
+      notice("⏳ Επιβεβαίωση πληρωμής…", "warn");
       await callEdgeFunction(
         "verify-checkout",
         { session_id: sessionId, contest_code: contestCode },
@@ -94,12 +66,12 @@ async function maybeVerifyStripeReturn(session) {
       url.searchParams.delete("session_id");
       window.history.replaceState({}, "", url.toString());
 
-      notice(t("paymentOk"), "ok");
+      notice("✅ Η αγορά HELP ολοκληρώθηκε και ενεργοποιήθηκε.", "ok");
       return true;
     }
   } catch (e) {
     console.warn("verify-checkout failed", e);
-    notice(t("paymentFail", { msg: e?.message || e }), "err");
+    notice(`⚠️ Η πληρωμή έγινε, αλλά δεν ενεργοποιήθηκε το HELP: ${e?.message || e}`, "err");
   }
   return false;
 }
@@ -151,7 +123,7 @@ function setCountdown(deadlineDate) {
   function tick() {
     const ms = msUntil(deadlineDate);
     if (ms <= 0) {
-      pill.textContent = `${t("deadline")}: ${fmtLocal(deadlineDate)} • ⏳ 00:00:00`;
+      pill.textContent = `Deadline: ${fmtLocal(deadlineDate)} • ⏳ 00:00:00`;
       lockNowIfPossible();
       return;
     }
@@ -159,7 +131,7 @@ function setCountdown(deadlineDate) {
     const h = String(Math.floor(total / 3600)).padStart(2, "0");
     const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
     const s = String(total % 60).padStart(2, "0");
-    pill.textContent = `${t("deadline")}: ${fmtLocal(deadlineDate)} • ⏳ ${h}:${m}:${s}`;
+    pill.textContent = `Deadline: ${fmtLocal(deadlineDate)} • ⏳ ${h}:${m}:${s}`;
     requestAnimationFrame(() => {}); // keep UI responsive
     setTimeout(tick, 1000);
   }
@@ -210,10 +182,11 @@ function matchTitle(m) {
 function buildMatchRow(match, pick, disabled) {
   const div = document.createElement("div");
   div.className = "match";
-  if (disabled) div.classList.add("locked"); div.style.display="flex"; div.style.justifyContent="space-between"; div.style.alignItems="center"; div.style.gap="10px";
+  if (disabled) div.classList.add("locked");
 
   const left = document.createElement("div");
-  left.style.flex="1";
+  left.className = "matchLeft";
+
   const title = document.createElement("div");
   title.className = "matchTitle";
   title.textContent = matchTitle(match);
@@ -227,12 +200,18 @@ function buildMatchRow(match, pick, disabled) {
   left.appendChild(time);
 
   const right = document.createElement("div");
-  right.style.display="flex"; right.style.alignItems="center"; right.style.gap="8px";
+  right.className = "matchRight";
+
+  const metaRow = document.createElement("div");
+  metaRow.className = "matchMeta";
+
+  const actionsRow = document.createElement("div");
+  actionsRow.className = "matchActions";
 
   const sel = document.createElement("select");
   sel.dataset.matchId = match.id;
   sel.innerHTML = `
-    <option value="">${t("pick")}</option>
+    <option value="">Pick: -</option>
     <option value="1">1</option>
     <option value="X">X</option>
     <option value="2">2</option>
@@ -240,36 +219,39 @@ function buildMatchRow(match, pick, disabled) {
   sel.value = pick ?? "";
   sel.disabled = !!disabled;
 
-const finalEl = document.createElement("span");
-finalEl.className = "mini";
-finalEl.style.marginLeft = "6px";
-finalEl.style.opacity = "0.9";
-finalEl.textContent = `${t("final")}: —`;
+  const finalEl = document.createElement("span");
+  finalEl.className = "mini";
+  finalEl.style.opacity = "0.9";
+  finalEl.textContent = "Τελικό: —";
 
-const statusEl = document.createElement("span");
-statusEl.className = "mini";
-statusEl.style.marginLeft = "6px";
-statusEl.style.fontWeight = "700";
-statusEl.textContent = "";
+  const statusEl = document.createElement("span");
+  statusEl.className = "mini";
+  statusEl.style.fontWeight = "700";
+  statusEl.textContent = "";
 
-const btn = document.createElement("button");
-  btn.className = "btn"; btn.style.padding="8px 12px";
-  btn.textContent = t("save");
+  const btn = document.createElement("button");
+  btn.className = "btn";
+  btn.style.padding = "8px 12px";
+  btn.textContent = "Save";
   btn.dataset.matchId = match.id;
   btn.disabled = !!disabled;
 
-  
-
   const helpBtn = document.createElement("button");
-  helpBtn.className = "btn"; helpBtn.style.padding="8px 10px";
-  helpBtn.textContent = t("help");
+  helpBtn.className = "btn";
+  helpBtn.style.padding = "8px 10px";
+  helpBtn.textContent = "HELP";
   helpBtn.dataset.matchId = match.id;
   helpBtn.disabled = !!disabled;
-right.appendChild(sel);
-  right.appendChild(finalEl);
-  right.appendChild(statusEl);
-  right.appendChild(helpBtn);
-  right.appendChild(btn);
+
+  metaRow.appendChild(sel);
+  metaRow.appendChild(finalEl);
+  metaRow.appendChild(statusEl);
+
+  actionsRow.appendChild(helpBtn);
+  actionsRow.appendChild(btn);
+
+  right.appendChild(metaRow);
+  right.appendChild(actionsRow);
 
   div.appendChild(left);
   div.appendChild(right);
@@ -301,7 +283,7 @@ async function main() {
   }
 
   const profile = await safeGetProfile(user.id);
-  setText("userPill", `${t("user")}: ${profile.username}`);
+  setText("userPill", `Χρήστης: ${profile.username}`);
 
   // Admin shortcut if available
   if (profile.is_admin) {
@@ -320,22 +302,22 @@ async function main() {
 
   if (contestRes.error) {
     console.error(contestRes.error);
-    notice(t("loadContestErr"), "err");
+    notice("Σφάλμα φόρτωσης διαγωνισμού", "err");
     return;
   }
   const contest = contestRes.data;
   if (!contest) {
-    setText("contestInfo", `${t("contest")}: -`);
-    setText("roundInfo", `${t("round")}: -`);
-    notice(t("noContest"), "warn");
+    setText("contestInfo", "Contest: -");
+    setText("roundInfo", "Αγωνιστική: -");
+    notice("Δεν υπάρχει ενεργός διαγωνισμός", "warn");
     return;
   }
 
   const code = contest.code;
   const round = Number(contest.current_round ?? 1);
 
-  setText("contestInfo", `${t("contest")}: ${code}`);
-  setText("roundInfo", `${t("round")}: ${round}`);
+  setText("contestInfo", `Contest: ${code}`);
+  setText("roundInfo", `Αγωνιστική: ${round}`);
 
 	// Final Week flag (stored in contests.meta.finalWeek)
 	try {
@@ -396,7 +378,7 @@ async function main() {
           if (box) {
             box.className = "notice warn";
             box.style.display = "block";
-            box.textContent = t("lateStart");
+            box.textContent = "⛔ Ο διαγωνισμός ξεκίνησε. Θα ενημερώσουμε για τον επόμενο 🙌";
             try { clearTimeout(window.__cmpNoticeT); } catch {}
           }
         }
@@ -407,7 +389,7 @@ async function main() {
   }
   const deadlineDate = parseISO(contest.deadline_iso);
   if (deadlineDate) setCountdown(deadlineDate);
-  else setText("deadlineInfo", `${t("deadline")}: -`);
+  else setText("deadlineInfo", "Deadline: -");
 
   const deadlinePassed = isDeadlinePassed(contest.deadline_iso);
 
@@ -466,7 +448,7 @@ const helpState = {
 
   const statusPill = document.getElementById("statusPill");
   if (statusPill) {
-    statusPill.textContent = isLocked ? t("lockedClosed") : t("lockedOpen");
+    statusPill.textContent = isLocked ? "Κατάσταση: 🔒 Κλειδωμένες" : "Κατάσταση: 🟢 Ανοιχτές";
   }
 
   // Load existing predictions
@@ -479,7 +461,7 @@ const helpState = {
 
   if (predsRes.error) {
     console.error(predsRes.error);
-    notice(t("predLoadErr"), "err");
+    notice("Σφάλμα φόρτωσης προβλέψεων", "err");
   }
 
   const predMap = new Map();
@@ -509,19 +491,19 @@ function computeFinalAndStatus(matchId, pickVal) {
   const mr = resultMap.get(String(matchId));
   const helpUsed = helpState.used.includes(String(matchId));
 
-  if (!mr) return { finalText: `${t("final")}: —`, statusText: "", kind: "" };
+  if (!mr) return { finalText: "Τελικό: —", statusText: "", kind: "" };
 
   if (mr.is_off) {
     return {
-      finalText: `${t("final")}: OFF`,
-      statusText: helpUsed ? t("correct") : t("wrong"),
+      finalText: "Τελικό: OFF",
+      statusText: helpUsed ? "Σωστό" : "Λάθος",
       kind: helpUsed ? "ok" : "bad",
     };
   }
 
   if (!mr.result) {
     return {
-      finalText: `${t("final")}: —`,
+      finalText: "Τελικό: —",
       statusText: helpUsed ? "HELP" : "",
       kind: helpUsed ? "info" : "",
     };
@@ -529,8 +511,8 @@ function computeFinalAndStatus(matchId, pickVal) {
 
   const isCorrect = helpUsed || (pickVal && String(pickVal) === String(mr.result));
   return {
-    finalText: `${t("final")}: ${mr.result}`,
-    statusText: pickVal ? (isCorrect ? t("correct") : t("wrong")) : "",
+    finalText: `Τελικό: ${mr.result}`,
+    statusText: pickVal ? (isCorrect ? "Σωστό" : "Λάθος") : "",
     kind: pickVal ? (isCorrect ? "ok" : "bad") : "",
   };
 }
@@ -542,7 +524,7 @@ function computeFinalAndStatus(matchId, pickVal) {
 
   const matches = Array.isArray(contest.matches) ? contest.matches : [];
   if (!matches.length) {
-    matchesBox.innerHTML = `<div class="mini">${t("noMatches")}</div>`;
+    matchesBox.innerHTML = `<div class="mini">❌ Δεν υπάρχουν αγώνες.</div>`;
     return;
   }
 
@@ -551,11 +533,11 @@ function computeFinalAndStatus(matchId, pickVal) {
 
   async function upsertPrediction(matchId, pickVal) {
     if (lateBlocked || isLocked) {
-      notice(t("predsLocked"), "warn");
+      notice("Οι προβλέψεις είναι κλειδωμένες.", "warn");
       return { ok: false };
     }
     if (!lateBlocked && deadlinePassed) {
-      notice(t("deadlineNoChange"), "warn");
+      notice("Πέρασε το deadline. Δεν μπορείς να αλλάξεις πρόβλεψη.", "warn");
       return { ok: false };
     }
     const payload = {
@@ -573,7 +555,7 @@ function computeFinalAndStatus(matchId, pickVal) {
 
     if (error) {
       console.error(error);
-      notice(t("saveFail"), "err");
+      notice("Αποτυχία αποθήκευσης πρόβλεψης.", "err");
       return { ok: false, error };
     }
     if (pickVal) predMap.set(matchId, pickVal);
@@ -584,7 +566,7 @@ function computeFinalAndStatus(matchId, pickVal) {
   function scheduleAutosave(matchId, pickVal, btnEl) {
     if (pending.has(matchId)) clearTimeout(pending.get(matchId));
     if (btnEl) {
-      btnEl.textContent = t("saving");
+      btnEl.textContent = "Saving…";
       btnEl.disabled = true;
     }
     pending.set(
@@ -592,11 +574,11 @@ function computeFinalAndStatus(matchId, pickVal) {
       setTimeout(async () => {
         const res = await upsertPrediction(matchId, pickVal);
         if (btnEl) {
-          btnEl.textContent = res.ok ? t("saved") : t("save");
+          btnEl.textContent = res.ok ? "Saved" : "Save";
           btnEl.disabled = !!isLocked;
-          if (res.ok) setTimeout(() => (btnEl.textContent = t("save")), 900);
+          if (res.ok) setTimeout(() => (btnEl.textContent = "Save"), 900);
         }
-        if (res.ok) notice(t("savedNotice"), "ok");
+        if (res.ok) notice("✅ Αποθηκεύτηκε", "ok");
       }, 350)
     );
   }
@@ -609,7 +591,7 @@ function computeFinalAndStatus(matchId, pickVal) {
     function refreshOutcome() {
       const v = sel.value || "";
       const o = computeFinalAndStatus(matchId, v);
-      if (finalEl) finalEl.textContent = o.finalText || `${t("final")}: —`;
+      if (finalEl) finalEl.textContent = o.finalText || "Τελικό: —";
       if (statusEl) {
         statusEl.textContent = o.statusText || "";
         statusEl.style.padding = o.statusText ? "2px 6px" : "0";
@@ -641,16 +623,16 @@ function computeFinalAndStatus(matchId, pickVal) {
 function renderHelpBtn() {
   const used = helpState.used.includes(matchId);
   if (used) {
-    helpBtn.textContent = t("helpUsed");
+    helpBtn.textContent = "HELP ✓";
     helpBtn.style.background = "rgba(52,152,219,.25)";
     helpBtn.style.borderColor = "rgba(52,152,219,.55)";
   } else {
-    helpBtn.textContent = t("help");
+    helpBtn.textContent = "HELP";
     helpBtn.style.background = "";
     helpBtn.style.borderColor = "";
   }
   helpBtn.disabled = !!isLocked || !!deadlinePassed || (!used && helpState.remaining <= 0);
-  helpBtn.title = (!used && helpState.remaining <= 0) ? t("helpNoMore") : "";
+  helpBtn.title = (!used && helpState.remaining <= 0) ? "Δεν έχεις άλλα HELP διαθέσιμα." : "";
 }
 
 async function persistHelpState() {
@@ -668,7 +650,7 @@ async function persistHelpState() {
     .upsert(payload, { onConflict: "user_id,contest_code" });
   if (error) {
     console.error(error);
-    notice(t("helpSaveErr"), "err");
+    notice("❌ Σφάλμα αποθήκευσης HELP.", "err");
     return false;
   }
   return true;
@@ -696,7 +678,7 @@ helpBtn.addEventListener("click", async () => {
   }
 
   const ok = await persistHelpState();
-  if (ok) notice(used ? t("helpRemoved") : t("helpAdded"), "ok");
+  if (ok) notice(used ? "↩️ Αφαιρέθηκε HELP από τον αγώνα." : "✅ Έβαλες HELP στον αγώνα.", "ok");
   renderHelpBtn();
   refreshOutcome();
 });
@@ -712,20 +694,20 @@ if (buyBtn) {
   const alreadyBought = !!helpRes.data;
   buyBtn.disabled = alreadyBought || lateBlocked;
   if (lateBlocked) {
-    buyBtn.textContent = t("contestStartedCantBuy");
+    buyBtn.textContent = "⛔ Ο διαγωνισμός ξεκίνησε";
   } else {
-    buyBtn.textContent = alreadyBought ? t("helpActive", { remaining: helpState.remaining }) : t("buyHelp");
+    buyBtn.textContent = alreadyBought ? `✅ HELP ενεργό (${helpState.remaining} διαθέσιμα)` : "🧠 Αγορά HELP (€1,99)";
   }
 
   
 buyBtn.addEventListener("click", () => {
     // Guards (same rules as before)
     if (lateBlocked) {
-      notice(t("contestStartedCantBuyNotice"), "warn");
+      notice("⛔ Ο διαγωνισμός ξεκίνησε — δεν μπορείς να αγοράσεις.", "warn");
       return;
     }
     if (deadlinePassed || isLocked) {
-      notice(t("helpAfterLock"), "warn");
+      notice("🔒 Δεν μπορείς να αγοράσεις HELP μετά το κλείδωμα/deadline.", "warn");
       return;
     }
     // Payment flow happens in pay.html (Stripe-ready). No secrets in frontend.
@@ -745,7 +727,7 @@ buyBtn.addEventListener("click", () => {
       lockBtn.disabled = true;
       lockBtn.classList.add("locked");
       lockBtn.setAttribute("aria-pressed", "true");
-      lockBtn.textContent = t("lockButtonLocked");
+      lockBtn.textContent = "🔒 Κλειδωμένες";
       // Visual cue: change color when locked
       lockBtn.style.opacity = "1";
       lockBtn.style.background = "rgba(231, 76, 60, 0.35)";
@@ -761,7 +743,7 @@ buyBtn.addEventListener("click", () => {
       lockBtn.disabled = false;
       lockBtn.classList.remove("locked");
       lockBtn.setAttribute("aria-pressed", "false");
-      lockBtn.textContent = t("lockPred");
+      lockBtn.textContent = "🔒 Κλείδωμα προβλέψεων";
       lockBtn.style.background = "";
       lockBtn.style.borderColor = "";
 
@@ -787,8 +769,8 @@ buyBtn.addEventListener("click", () => {
     lockBtn.disabled = lateBlocked || deadlinePassed;
     lockBtn.addEventListener("click", async () => {
       // Double confirmation only (do NOT block if some picks are missing)
-      if (!confirm(t("autoConfirm1"))) return;
-      if (!confirm(t("autoConfirm2"))) return;
+      if (!confirm("Για ασφάλεια: Είσαι σίγουρος ότι πρόβλεψες σε ΟΛΑ τα παιχνίδια;")) return;
+      if (!confirm("Είσαι σίγουρος; Να κλειδώσω τις προβλέψεις σου τώρα;")) return;
       if (lateBlocked) {
         notice("⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει. Θα ενημερώσουμε για τον επόμενο.", "warn");
         applyLockUI(true);
@@ -796,12 +778,12 @@ buyBtn.addEventListener("click", () => {
       }
 
       if (lateBlocked || isLocked) {
-        notice(t("lockAlready"), "warn");
+        notice("Ήδη κλειδωμένες.", "warn");
         applyLockUI(true);
         return;
       }
       if (!lateBlocked && deadlinePassed) {
-        notice(t("deadlineAutoLock"), "warn");
+        notice("Πέρασε το deadline. Κλείδωμα αυτόματα.", "warn");
         return;
       }
       try {
@@ -817,18 +799,18 @@ buyBtn.addEventListener("click", () => {
         );
         if (error) throw error;
         isLocked = true;
-        if (statusPill) statusPill.textContent = t("lockedClosed");
+        if (statusPill) statusPill.textContent = "Κατάσταση: 🔒 Κλειδωμένες";
         applyLockUI(true);
-        notice(t("youLocked"), "ok");
+        notice("🔒 Κλείδωσες τις προβλέψεις σου!", "ok");
       } catch (e) {
         console.error(e);
-        notice(t("lockFail"), "err");
+        notice("❌ Αποτυχία κλειδώματος.", "err");
       }
     });
   }
 
   if (!lateBlocked && deadlinePassed) {
-    notice(t("deadlineExpired"), "warn");
+    notice("⏳ Έληξε το deadline. Οι προβλέψεις είναι κλειδωμένες.", "warn");
   }
 }
 

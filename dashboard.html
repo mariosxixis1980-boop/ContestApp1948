@@ -111,25 +111,44 @@
   box-shadow: 0 0 14px rgba(0,255,0,.35);
 }
 
+
+    .match{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+    .matchLeft{flex:1;min-width:0}
+    .matchRight{display:flex;flex-direction:column;gap:8px;min-width:320px;max-width:420px}
+    .matchMeta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}
+    .matchActions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+    .matchActions .btn{padding:10px 12px}
+    #installBtn{display:none}
+    @media (max-width:700px){
+      body{padding:12px}
+      .wrap{width:100%}
+      .card{padding:14px;border-radius:18px}
+      h1{font-size:32px}
+      .match{flex-direction:column;gap:10px}
+      .matchLeft,.matchRight{width:100%;min-width:0;max-width:none}
+      .matchMeta{justify-content:flex-start;align-items:stretch}
+      .matchMeta select{width:100%;min-width:0}
+      .matchMeta .mini{display:block}
+      .matchActions{width:100%;justify-content:stretch}
+      .matchActions .btn{flex:1 1 0;min-width:0}
+      .pill{max-width:100%}
+    }
     .footer-legal{margin:22px auto 0;max-width:520px;text-align:center;font-size:13px;color:rgba(255,255,255,.65)}
     .footer-legal a{margin:0 10px;color:rgba(255,255,255,.8);text-decoration:none}
-    #installBtn{display:none}
     .footer-legal a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <h1 id="pageTitle">⚽ Dashboard</h1>
-      <div class="sub" id="pageSub">Βάλε 1 / X / 2, πάτα Save (ή αλλάζει αυτόματα). Κλείδωμα πριν το deadline.</div>
+      <h1>⚽ Dashboard</h1>
+      <div class="sub">Βάλε 1 / X / 2, πάτα Save (ή αλλάζει αυτόματα). Κλείδωμα πριν το deadline.</div>
 
       <div class="row">
-        <a class="btn" id="leaderboardBtn" href="leaderboard.html">🏆 Leaderboard</a>
+        <a class="btn" href="leaderboard.html">🏆 Leaderboard</a>
         <a class="btn" id="adminLink" href="admin.html" style="display:none;">🛠 Admin</a>
         <button class="btn" id="lo" type="button">🚪 Logout</button>
         <button class="btn bl" id="installBtn" type="button">📲 Install App</button>
-        <button class="btn" id="langEl" type="button">🇬🇷 EL</button>
-        <button class="btn" id="langEn" type="button">🇬🇧 EN</button>
         <div class="pill" id="userPill">Χρήστης: -</div>
       </div>
 
@@ -158,41 +177,14 @@
     <a href="terms.html" target="_blank">Όροι</a>
     <a href="privacy.html" target="_blank">Privacy</a>
   </footer>
+
   <script>
     window.__cmpDeferredPrompt = null;
-    const installBtn = document.getElementById("installBtn");
-
-    function showInstallFallback() {
-      alert("Για εγκατάσταση πάτα ⋮ και μετά «Προσθήκη στην αρχική οθόνη» ή «Install app».");
-    }
-
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       window.__cmpDeferredPrompt = e;
-      if (installBtn) installBtn.style.display = "inline-flex";
-    });
-
-    if (installBtn) {
-      installBtn.addEventListener("click", async () => {
-        try {
-          if (window.__cmpDeferredPrompt) {
-            window.__cmpDeferredPrompt.prompt();
-            await window.__cmpDeferredPrompt.userChoice;
-            window.__cmpDeferredPrompt = null;
-            installBtn.style.display = "none";
-          } else {
-            showInstallFallback();
-          }
-        } catch (err) {
-          console.warn("Install prompt failed", err);
-          showInstallFallback();
-        }
-      });
-    }
-
-    window.addEventListener("appinstalled", () => {
-      window.__cmpDeferredPrompt = null;
-      if (installBtn) installBtn.style.display = "none";
+      const btn = document.getElementById("installBtn");
+      if (btn) btn.style.display = "inline-flex";
     });
 
     if ("serviceWorker" in navigator) {
