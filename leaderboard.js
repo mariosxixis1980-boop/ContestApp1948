@@ -83,7 +83,7 @@ async function loadActiveContestPill() {
 async function loadLeaderboard() {
   try {
     const { data, error } = await supabase
-      .from('leaderboard_active_named_v')
+      .from('leaderboard_view')
       .select('*')
       .order('total_points', { ascending: false })
       .order('bonus_count', { ascending: false })
