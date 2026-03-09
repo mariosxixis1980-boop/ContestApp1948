@@ -114,13 +114,51 @@ async function loadLeaderboard() {
 
     // Compute my rank based on current ordering (display-only)
     let myRank = null;
+    let diffAbove = null;
+    let diffBelow = null;
+
     if (myId) {
       const idx = data.findIndex((r) => String(r.user_id || '') === String(myId));
-      if (idx >= 0) myRank = idx + 1;
+      if (idx >= 0) {
+        myRank = idx + 1;
+
+        const myPoints = Number(data[idx].total_points ?? 0);
+
+        if (idx > 0) {
+          const abovePoints = Number(data[idx - 1].total_points ?? 0);
+          diffAbove = abovePoints - myPoints;
+        }
+
+        if (idx < data.length - 1) {
+          const belowPoints = Number(data[idx + 1].total_points ?? 0);
+          diffBelow = myPoints - belowPoints;
+        }
+      }
     }
 
     const myPill = document.getElementById('myRankPill');
-    if (myPill) { myPill.textContent = myRank ? t('rankVal', { rank: myRank }) : t('rankEmpty'); myPill.dataset.dynamic='1'; }
+    if (myPill) {
+      if (myRank) {
+        let msg = t('rankVal', { rank: myRank });
+
+        if (diffAbove !== null && diffAbove > 0) {
+          msg += currentLang === 'en'
+            ? ` • ${diffAbove} behind the player above`
+            : ` • ${diffAbove} πίσω από τον προηγούμενο`;
+        }
+
+        if (diffBelow !== null && diffBelow > 0) {
+          msg += currentLang === 'en'
+            ? ` • ${diffBelow} ahead of the next player`
+            : ` • ${diffBelow} μπροστά από τον επόμενο`;
+        }
+
+        myPill.textContent = msg;
+      } else {
+        myPill.textContent = t('rankEmpty');
+      }
+      myPill.dataset.dynamic='1';
+    }
 
 	    // Winner banner (Final Week): show ONLY to the winner when finalWeek is ON and contest is LOCKED
 	    try {
