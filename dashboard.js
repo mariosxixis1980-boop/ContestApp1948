@@ -1,5 +1,122 @@
 import { supabase, ensureSupabaseConfig } from "./supabase.js";
 
+const DASH_LANG_KEY = "CMP_LANG";
+const DASH_I18N = {
+  el: {
+    dashboardTitle: "⚽ Dashboard",
+    dashboardSub: "Το παιχνίδι είναι σε δοκιμαστική περίοδο. Ευχαριστώ για την συμμετοχή σας. Ο ΔΙΑΓΩΝΙΣΜΟΣ ΞΕΚΙΝΗΣΕ. 7 ΑΓΩΝΕΣ ΒΡΙΣΚΟΝΤΑΙ ΣΤΟ ΠΙΝΑΚΑ ΣΑΣ.. (( Βάλε 1 / X / 2, πάτα Save (ή αλλάζει αυτόματα). Κλείδωμα πριν το deadline)).",
+    leaderboard: "🏆 Leaderboard",
+    admin: "🛠 Admin",
+    logout: "🚪 Logout",
+    install: "📲 Install App",
+    user: "Χρήστης",
+    round: "Αγωνιστική",
+    deadline: "Deadline",
+    status: "Κατάσταση",
+    statusOpen: "🟢 Ανοιχτές",
+    statusLocked: "🔒 Κλειδωμένες",
+    buyHelp: "🧠 Αγορά HELP (€1,99)",
+    lockPreds: "🔒 Κλείδωμα προβλέψεων",
+    finalWeek: "🏁 Final Week",
+    rules: "Κανονισμός",
+    terms: "Όροι",
+    privacy: "Privacy",
+    pickPlaceholder: "Pick: -",
+    save: "Save",
+    help: "HELP",
+    final: "Τελικό",
+    correct: "Σωστό",
+    wrong: "Λάθος",
+    openMatches: "Ανοιχτές",
+    lockedMatches: "Κλειδωμένες",
+    installIos: "📱 iPhone/iPad: Safari → Share → Add to Home Screen",
+    installFallback: "Για εγκατάσταση άνοιξε το μενού του browser και πάτα Install app ή Add to Home Screen.",
+  },
+  en: {
+    dashboardTitle: "⚽ Dashboard",
+    dashboardSub: "The game is in test mode. Thank you for joining. THE CONTEST HAS STARTED. 7 MATCHES ARE ON YOUR BOARD. (( Pick 1 / X / 2, press Save (or it changes automatically). Lock before the deadline)).",
+    leaderboard: "🏆 Leaderboard",
+    admin: "🛠 Admin",
+    logout: "🚪 Logout",
+    install: "📲 Install App",
+    user: "User",
+    round: "Round",
+    deadline: "Deadline",
+    status: "Status",
+    statusOpen: "🟢 Open",
+    statusLocked: "🔒 Locked",
+    buyHelp: "🧠 Buy HELP (€1.99)",
+    lockPreds: "🔒 Lock predictions",
+    finalWeek: "🏁 Final Week",
+    rules: "Rules",
+    terms: "Terms",
+    privacy: "Privacy",
+    pickPlaceholder: "Pick: -",
+    save: "Save",
+    help: "HELP",
+    final: "Final",
+    correct: "Correct",
+    wrong: "Wrong",
+    openMatches: "Open",
+    lockedMatches: "Locked",
+    installIos: "📱 iPhone/iPad: Safari → Share → Add to Home Screen",
+    installFallback: "To install, open the browser menu and tap Install app or Add to Home Screen.",
+  }
+};
+let currentLang = localStorage.getItem(DASH_LANG_KEY) || "el";
+if (!DASH_I18N[currentLang]) currentLang = "el";
+const t = (k) => (DASH_I18N[currentLang] && DASH_I18N[currentLang][k]) || DASH_I18N.el[k] || k;
+let dashboardState = { username: '-', code: '-', round: '-', deadlineText: '-', locked: false };
+function refreshDashboardLabels() {
+  document.documentElement.lang = currentLang;
+  const h1 = document.querySelector('h1');
+  if (h1) h1.textContent = t('dashboardTitle');
+  const sub = document.querySelector('.sub');
+  if (sub) sub.textContent = t('dashboardSub');
+  const lb = document.getElementById('leaderboardBtn');
+  if (lb) lb.textContent = t('leaderboard');
+  const admin = document.getElementById('adminLink');
+  if (admin) admin.textContent = t('admin');
+  const lo = document.getElementById('lo');
+  if (lo) lo.textContent = t('logout');
+  const installBtn = document.getElementById('installBtn');
+  if (installBtn) installBtn.textContent = t('install');
+  const buyBtn = document.getElementById('buyBtn');
+  if (buyBtn) buyBtn.textContent = t('buyHelp');
+  const lockBtn = document.getElementById('lockBtn');
+  if (lockBtn && !lockBtn.classList.contains('locked')) lockBtn.textContent = t('lockPreds');
+  const fw = document.getElementById('finalWeekPill');
+  if (fw) fw.textContent = t('finalWeek');
+  const iph = document.getElementById('iphoneInstall');
+  if (iph) iph.textContent = t('installIos');
+  const footerLinks = document.querySelectorAll('.footer-legal a');
+  if (footerLinks[0]) footerLinks[0].textContent = t('rules');
+  if (footerLinks[1]) footerLinks[1].textContent = t('terms');
+  if (footerLinks[2]) footerLinks[2].textContent = t('privacy');
+  setText('userPill', `${t('user')}: ${dashboardState.username ?? '-'}`);
+  setText('contestInfo', `Contest: ${dashboardState.code ?? '-'}`);
+  setText('roundInfo', `${t('round')}: ${dashboardState.round ?? '-'}`);
+  const dText = dashboardState.deadlineText ?? '-';
+  if (dText !== '-') setText('deadlineInfo', `${t('deadline')}: ${dText}`);
+  setText('statusPill', `${t('status')}: ${dashboardState.locked ? t('statusLocked') : t('statusOpen')}`);
+  document.querySelectorAll('#matches .match').forEach((row)=>{
+    const sel = row.querySelector('select');
+    if (sel && sel.options[0]) sel.options[0].textContent = t('pickPlaceholder');
+    const saveBtn = row.querySelector('.matchActions .btn:last-child');
+    const helpBtn = row.querySelector('.matchActions .btn:first-child');
+    if (saveBtn) saveBtn.textContent = t('save');
+    if (helpBtn) helpBtn.textContent = t('help');
+    const finalEl = row.querySelector('.matchMeta .mini');
+    if (finalEl && finalEl.textContent.startsWith('Τελικό:')) finalEl.textContent = finalEl.textContent.replace('Τελικό', t('final'));
+    if (finalEl && finalEl.textContent.startsWith('Final:')) finalEl.textContent = finalEl.textContent.replace('Final', t('final'));
+    const statusEl = row.querySelectorAll('.matchMeta .mini')[1];
+    if (statusEl) {
+      if (statusEl.textContent === 'Σωστό' || statusEl.textContent === 'Correct') statusEl.textContent = t('correct');
+      if (statusEl.textContent === 'Λάθος' || statusEl.textContent === 'Wrong') statusEl.textContent = t('wrong');
+    }
+  });
+}
+
 // Call a Supabase Edge Function using supabase-js.
 // This automatically calls: <SUPABASE_URL>/functions/v1/<functionName>
 // and attaches apikey + Authorization from the current session.
@@ -97,7 +214,7 @@ function parseISO(s) {
 function fmtLocal(dt) {
   if (!dt || isNaN(dt.getTime())) return "";
   try {
-    return dt.toLocaleString("el-GR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    return dt.toLocaleString(currentLang === "en" ? "en-GB" : "el-GR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
   } catch {
     return dt.toISOString();
   }
@@ -123,7 +240,8 @@ function setCountdown(deadlineDate) {
   function tick() {
     const ms = msUntil(deadlineDate);
     if (ms <= 0) {
-      pill.textContent = `Deadline: ${fmtLocal(deadlineDate)} • ⏳ 00:00:00`;
+      dashboardState.deadlineText = `${fmtLocal(deadlineDate)} • ⏳ 00:00:00`;
+      pill.textContent = `${t("deadline")}: ${dashboardState.deadlineText}`;
       lockNowIfPossible();
       return;
     }
@@ -131,7 +249,8 @@ function setCountdown(deadlineDate) {
     const h = String(Math.floor(total / 3600)).padStart(2, "0");
     const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
     const s = String(total % 60).padStart(2, "0");
-    pill.textContent = `Deadline: ${fmtLocal(deadlineDate)} • ⏳ ${h}:${m}:${s}`;
+    dashboardState.deadlineText = `${fmtLocal(deadlineDate)} • ⏳ ${h}:${m}:${s}`;
+    pill.textContent = `${t("deadline")}: ${dashboardState.deadlineText}`;
     requestAnimationFrame(() => {}); // keep UI responsive
     setTimeout(tick, 1000);
   }
@@ -211,7 +330,7 @@ function buildMatchRow(match, pick, disabled) {
   const sel = document.createElement("select");
   sel.dataset.matchId = match.id;
   sel.innerHTML = `
-    <option value="">Pick: -</option>
+    <option value="">${t("pickPlaceholder")}</option>
     <option value="1">1</option>
     <option value="X">X</option>
     <option value="2">2</option>
@@ -222,7 +341,7 @@ function buildMatchRow(match, pick, disabled) {
   const finalEl = document.createElement("span");
   finalEl.className = "mini";
   finalEl.style.opacity = "0.9";
-  finalEl.textContent = "Τελικό: —";
+  finalEl.textContent = `${t("final")}: —`;
 
   const statusEl = document.createElement("span");
   statusEl.className = "mini";
@@ -232,14 +351,14 @@ function buildMatchRow(match, pick, disabled) {
   const btn = document.createElement("button");
   btn.className = "btn";
   btn.style.padding = "8px 12px";
-  btn.textContent = "Save";
+  btn.textContent = t("save");
   btn.dataset.matchId = match.id;
   btn.disabled = !!disabled;
 
   const helpBtn = document.createElement("button");
   helpBtn.className = "btn";
   helpBtn.style.padding = "8px 10px";
-  helpBtn.textContent = "HELP";
+  helpBtn.textContent = t("help");
   helpBtn.dataset.matchId = match.id;
   helpBtn.disabled = !!disabled;
 
@@ -283,7 +402,8 @@ async function main() {
   }
 
   const profile = await safeGetProfile(user.id);
-  setText("userPill", `Χρήστης: ${profile.username}`);
+  dashboardState.username = profile.username;
+  setText("userPill", `${t("user")}: ${profile.username}`);
 
   // Admin shortcut if available
   if (profile.is_admin) {
@@ -316,8 +436,10 @@ async function main() {
   const code = contest.code;
   const round = Number(contest.current_round ?? 1);
 
+  dashboardState.code = code;
+  dashboardState.round = round;
   setText("contestInfo", `Contest: ${code}`);
-  setText("roundInfo", `Αγωνιστική: ${round}`);
+  setText("roundInfo", `${t("round")}: ${round}`);
 
 	// Final Week flag (stored in contests.meta.finalWeek)
 	try {
@@ -387,9 +509,10 @@ async function main() {
   } catch (e) {
     console.warn("Late guard check failed:", e);
   }
+  window.__cmpDeadlineIso = contest.deadline_iso || "";
   const deadlineDate = parseISO(contest.deadline_iso);
   if (deadlineDate) setCountdown(deadlineDate);
-  else setText("deadlineInfo", "Deadline: -");
+  else { dashboardState.deadlineText = "-"; setText("deadlineInfo", `${t("deadline")}: -`); }
 
   const deadlinePassed = isDeadlinePassed(contest.deadline_iso);
 
@@ -448,7 +571,8 @@ const helpState = {
 
   const statusPill = document.getElementById("statusPill");
   if (statusPill) {
-    statusPill.textContent = isLocked ? "Κατάσταση: 🔒 Κλειδωμένες" : "Κατάσταση: 🟢 Ανοιχτές";
+    dashboardState.locked = !!isLocked;
+    statusPill.textContent = `${t("status")}: ${isLocked ? t("statusLocked") : t("statusOpen")}`;
   }
 
   // Load existing predictions
@@ -463,6 +587,8 @@ const helpState = {
     console.error(predsRes.error);
     notice("Σφάλμα φόρτωσης προβλέψεων", "err");
   }
+
+  refreshDashboardLabels();
 
   const predMap = new Map();
   (predsRes.data || []).forEach((p) => predMap.set(p.match_id, p.pick));
@@ -491,19 +617,19 @@ function computeFinalAndStatus(matchId, pickVal) {
   const mr = resultMap.get(String(matchId));
   const helpUsed = helpState.used.includes(String(matchId));
 
-  if (!mr) return { finalText: "Τελικό: —", statusText: "", kind: "" };
+  if (!mr) return { finalText: `${t("final")}: —`, statusText: "", kind: "" };
 
   if (mr.is_off) {
     return {
-      finalText: "Τελικό: OFF",
-      statusText: helpUsed ? "Σωστό" : "Λάθος",
+      finalText: `${t("final")}: OFF`,
+      statusText: helpUsed ? t("correct") : t("wrong"),
       kind: helpUsed ? "ok" : "bad",
     };
   }
 
   if (!mr.result) {
     return {
-      finalText: "Τελικό: —",
+      finalText: `${t("final")}: —`,
       statusText: helpUsed ? "HELP" : "",
       kind: helpUsed ? "info" : "",
     };
@@ -511,8 +637,8 @@ function computeFinalAndStatus(matchId, pickVal) {
 
   const isCorrect = helpUsed || (pickVal && String(pickVal) === String(mr.result));
   return {
-    finalText: `Τελικό: ${mr.result}`,
-    statusText: pickVal ? (isCorrect ? "Σωστό" : "Λάθος") : "",
+    finalText: `${t("final")}: ${mr.result}`,
+    statusText: pickVal ? (isCorrect ? t("correct") : t("wrong")) : "",
     kind: pickVal ? (isCorrect ? "ok" : "bad") : "",
   };
 }
@@ -627,7 +753,7 @@ function renderHelpBtn() {
     helpBtn.style.background = "rgba(52,152,219,.25)";
     helpBtn.style.borderColor = "rgba(52,152,219,.55)";
   } else {
-    helpBtn.textContent = "HELP";
+    helpBtn.textContent = t("help");
     helpBtn.style.background = "";
     helpBtn.style.borderColor = "";
   }
@@ -727,7 +853,7 @@ buyBtn.addEventListener("click", () => {
       lockBtn.disabled = true;
       lockBtn.classList.add("locked");
       lockBtn.setAttribute("aria-pressed", "true");
-      lockBtn.textContent = "🔒 Κλειδωμένες";
+      lockBtn.textContent = t("statusLocked");
       // Visual cue: change color when locked
       lockBtn.style.opacity = "1";
       lockBtn.style.background = "rgba(231, 76, 60, 0.35)";
@@ -743,7 +869,7 @@ buyBtn.addEventListener("click", () => {
       lockBtn.disabled = false;
       lockBtn.classList.remove("locked");
       lockBtn.setAttribute("aria-pressed", "false");
-      lockBtn.textContent = "🔒 Κλείδωμα προβλέψεων";
+      lockBtn.textContent = t("lockPreds");
       lockBtn.style.background = "";
       lockBtn.style.borderColor = "";
 
@@ -758,6 +884,7 @@ buyBtn.addEventListener("click", () => {
   // ensure UI matches backend lock state on load
   // Treat deadlinePassed as locked UI as well (same red style)
   applyLockUI(isLocked || lateBlocked || deadlinePassed);
+  refreshDashboardLabels();
 
   // Late users: κρατάμε το dashboard αλλά όλα disabled
   if (lateBlocked && lockBtn) {
@@ -799,7 +926,8 @@ buyBtn.addEventListener("click", () => {
         );
         if (error) throw error;
         isLocked = true;
-        if (statusPill) statusPill.textContent = "Κατάσταση: 🔒 Κλειδωμένες";
+        dashboardState.locked = true;
+        if (statusPill) statusPill.textContent = `${t("status")}: ${t("statusLocked")}`;
         applyLockUI(true);
         notice("🔒 Κλείδωσες τις προβλέψεις σου!", "ok");
       } catch (e) {
@@ -813,6 +941,39 @@ buyBtn.addEventListener("click", () => {
     notice("⏳ Έληξε το deadline. Οι προβλέψεις είναι κλειδωμένες.", "warn");
   }
 }
+
+const langToggleBtn = document.getElementById("langToggle");
+if (langToggleBtn) {
+  langToggleBtn.addEventListener("click", () => {
+    currentLang = currentLang === "el" ? "en" : "el";
+    localStorage.setItem(DASH_LANG_KEY, currentLang);
+    refreshDashboardLabels();
+    try { setCountdown(parseISO(window.__cmpDeadlineIso)); } catch {}
+  });
+}
+
+const installBtnEl = document.getElementById("installBtn");
+const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+if (isiOS) {
+  const iosHint = document.getElementById("iphoneInstall");
+  if (iosHint) iosHint.classList.add("show");
+}
+if (installBtnEl) {
+  installBtnEl.addEventListener("click", async () => {
+    const promptEvt = window.__cmpDeferredPrompt;
+    if (promptEvt) {
+      promptEvt.prompt();
+      try { await promptEvt.userChoice; } catch {}
+      window.__cmpDeferredPrompt = null;
+      installBtnEl.style.display = "none";
+      return;
+    }
+    alert(t("installFallback"));
+  });
+}
+window.addEventListener("appinstalled", () => {
+  if (installBtnEl) installBtnEl.style.display = "none";
+});
 
 main().catch((e) => {
   console.error(e);

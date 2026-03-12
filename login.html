@@ -80,6 +80,9 @@
     .tabs{display:flex;gap:10px;margin-top:12px}
     .tab{flex:1}
     .hide{display:none}
+    .passwordWrap{position:relative;}
+    .passwordWrap input{padding-right:48px;}
+    .eyeBtn{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:1px solid var(--b);background:rgba(255,255,255,.08);color:var(--t);border-radius:10px;padding:6px 9px;cursor:pointer;font-size:14px;}
   </style>
 </head>
 <body class="booting">
@@ -127,7 +130,10 @@
 <label>Email</label>
 <input autocomplete="email" id="loginEmail" placeholder="email@example.com" type="email"/>
 <label>Password</label>
+<div class="passwordWrap">
 <input autocomplete="current-password" id="loginPass" placeholder="••••••••" type="password"/>
+<button class="eyeBtn" id="toggleLoginPass" type="button" aria-label="Show password">👁</button>
+</div>
 <div class="row">
 <button class="btn g" id="loginBtn" type="button">✅ Login</button>
 <button class="btn" id="clearBtn" type="button">🧽 Clear</button>
@@ -145,7 +151,10 @@
 <label>Email</label>
 <input autocomplete="email" id="regEmail" placeholder="π.χ name@gmail.com" type="email"/>
 <label>Password</label>
+<div class="passwordWrap">
 <input autocomplete="new-password" id="regPass" placeholder="διάλεξε password" type="password"/>
+<button class="eyeBtn" id="toggleRegPass" type="button" aria-label="Show password">👁</button>
+</div>
 <div class="row">
 <button class="btn g" id="regBtn" type="button">🆕 Δημιουργία</button>
 <button class="btn" id="regClearBtn" type="button">🧽 Clear</button>
@@ -558,6 +567,19 @@ if (!cfg.ok) {
         byId("regEmail").value = "";
         byId("regPass").value = "";
       });
+
+      const setupPasswordToggle = (inputId, btnId) => {
+        const input = byId(inputId);
+        const btn = byId(btnId);
+        if (!input || !btn) return;
+        btn.addEventListener("click", () => {
+          const nextType = input.type === "password" ? "text" : "password";
+          input.type = nextType;
+          btn.textContent = nextType === "password" ? "👁" : "🙈";
+        });
+      };
+      setupPasswordToggle("loginPass", "toggleLoginPass");
+      setupPasswordToggle("regPass", "toggleRegPass");
 
       // Enter = submit
       ["loginEmail","loginPass"].forEach(id => {

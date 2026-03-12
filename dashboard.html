@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CMP - Dashboard</title>
+  <meta name="apple-mobile-web-app-title" content="CMP" />
   <meta name="theme-color" content="#070b13" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -136,6 +137,9 @@
     .footer-legal{margin:22px auto 0;max-width:520px;text-align:center;font-size:13px;color:rgba(255,255,255,.65)}
     .footer-legal a{margin:0 10px;color:rgba(255,255,255,.8);text-decoration:none}
     .footer-legal a:hover{text-decoration:underline}
+    .install-note{display:none;font-size:13px;color:var(--muted);font-weight:800}
+    .install-note.show{display:block}
+    .passwordWrap{position:relative}
 </style>
 </head>
 <body>
@@ -150,11 +154,15 @@
 		 (( Βάλε 1 / X / 2, πάτα Save (ή αλλάζει αυτόματα). Κλείδωμα πριν το deadline)).</div>
 
       <div class="row">
-        <a class="btn" href="leaderboard.html">🏆 Leaderboard</a>
+        <a class="btn" href="leaderboard.html" id="leaderboardBtn">🏆 Leaderboard</a>
         <a class="btn" id="adminLink" href="admin.html" style="display:none;">🛠 Admin</a>
+        <button class="btn" id="langToggle" type="button">🌐 EL / EN</button>
         <button class="btn" id="lo" type="button">🚪 Logout</button>
         <button class="btn bl" id="installBtn" type="button">📲 Install App</button>
         <div class="pill" id="userPill">Χρήστης: -</div>
+      </div>
+      <div class="row" id="installRow" style="margin-top:8px;">
+        <div id="iphoneInstall" class="install-note">📱 iPhone/iPad: Safari → Share → Add to Home Screen</div>
       </div>
 
       <div class="row">
