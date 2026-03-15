@@ -565,7 +565,7 @@ async function main() {
 // Load HELP purchase (ONE per contest) + usage per match
 const helpRes = await supabase
   .from("help_purchases")
-  .select("remaining, used_match_ids")
+  .select("remaining, used_match_ids, credits_granted, status")
   .eq("user_id", user.id)
   .eq("contest_code", code)
   .maybeSingle();
@@ -589,14 +589,13 @@ const quizRewardsForCurrentContest = Array.isArray(quizHelpRes.data)
     })
   : [];
 
-const quizHelpCount = quizRewardsForCurrentContest.reduce(
+// Historical quiz rewards earned in this contest
+const quizHelpEarned = quizRewardsForCurrentContest.reduce(
   (sum, row) => sum + (Number(row.amount) || 0),
   0
 );
 
-// IMPORTANT:
-// - If a help_purchases row exists for this contest, its `remaining` is the real available balance.
-// - If no help_purchases row exists yet, but quiz rewards exist, allow those quiz helps to be used.
+// Real available balance for this contest
 const remainingFromPurchase = (() => {
   const v = helpRes.data?.remaining;
   if (v === null || v === undefined || v === "") return null;
@@ -606,19 +605,40 @@ const remainingFromPurchase = (() => {
 
 const totalAvailableHelp = remainingFromPurchase !== null
   ? remainingFromPurchase
-  : quizHelpCount;
+  : quizHelpEarned;
+
+// Purchase credits granted for this contest (normally 3, or 0 if no purchase)
+const purchaseCreditsGranted = (() => {
+  const row = helpRes.data;
+  if (!row) return 0;
+  const status = String(row.status || "");
+  const granted = Number(row.credits_granted || 0);
+  if (status === "quiz_reward") return 0;
+  if (Number.isFinite(granted) && granted > 0) return granted;
+  return 0;
+})();
+
+// AVAILABLE purchase help = up to the granted purchase credits, capped by total available balance
+const purchaseHelpAvailable = Math.min(
+  Math.max(Number(totalAvailableHelp || 0), 0),
+  Math.max(Number(purchaseCreditsGranted || 0), 0)
+);
+
+// AVAILABLE quiz help = whatever remains after the purchase portion
+const quizHelpAvailable = Math.max(
+  Number(totalAvailableHelp || 0) - Number(purchaseHelpAvailable || 0),
+  0
+);
 
 const helpState = {
   remaining: Number(totalAvailableHelp || 0),
   used: Array.isArray(helpRes.data?.used_match_ids) ? helpRes.data.used_match_ids : [],
 };
 
-const getPurchaseHelpCount = () => {
-  if (!helpRes.data) return 0;
-  return Math.max(Number(helpState.remaining || 0) - Number(quizHelpCount || 0), 0);
-};
+const getPurchaseHelpCount = () => purchaseHelpAvailable;
+const getQuizHelpCount = () => quizHelpAvailable;
 
-renderHelpBreakdown(getPurchaseHelpCount(), quizHelpCount);
+renderHelpBreakdown(getPurchaseHelpCount(), getQuizHelpCount());
 
   // Load user lock state
   const lockRes = await supabase
@@ -870,7 +890,7 @@ helpBtn.addEventListener("click", async () => {
   const ok = await persistHelpState();
   if (ok) notice(used ? "↩️ Αφαιρέθηκε HELP από τον αγώνα." : "✅ Έβαλες HELP στον αγώνα.", "ok");
   renderHelpBtn();
-  renderHelpBreakdown(getPurchaseHelpCount(), quizHelpCount);
+  renderHelpBreakdown(getPurchaseHelpCount(), getQuizHelpCount());
   refreshOutcome();
 });
 
@@ -890,7 +910,7 @@ if (buyBtn) {
     buyBtn.textContent = alreadyBought ? `✅ HELP ενεργό (${helpState.remaining} διαθέσιμα)` : "🧠 Αγορά HELP (€1,99)";
   }
 
-  renderHelpBreakdown(getPurchaseHelpCount(), quizHelpCount);
+  renderHelpBreakdown(getPurchaseHelpCount(), getQuizHelpCount());
 
 buyBtn.addEventListener("click", () => {
     // Guards (same rules as before)
