@@ -614,7 +614,10 @@ const quizHelpCount = Array.isArray(quizHelpRes.data)
   ? quizHelpRes.data.reduce((sum, row) => sum + (Number(row.amount) || 0), 0)
   : 0;
 
-renderHelpBreakdown(helpState.remaining, quizHelpCount);
+const getPurchaseHelpCount = () =>
+  Math.max(Number(helpState.remaining || 0) - Number(quizHelpCount || 0), 0);
+
+renderHelpBreakdown(getPurchaseHelpCount(), quizHelpCount);
 
   // Load user lock state
   const lockRes = await supabase
@@ -866,7 +869,7 @@ helpBtn.addEventListener("click", async () => {
   const ok = await persistHelpState();
   if (ok) notice(used ? "↩️ Αφαιρέθηκε HELP από τον αγώνα." : "✅ Έβαλες HELP στον αγώνα.", "ok");
   renderHelpBtn();
-  renderHelpBreakdown(helpState.remaining, quizHelpCount);
+  renderHelpBreakdown(getPurchaseHelpCount(), quizHelpCount);
   refreshOutcome();
 });
 
@@ -886,7 +889,7 @@ if (buyBtn) {
     buyBtn.textContent = alreadyBought ? `✅ HELP ενεργό (${helpState.remaining} διαθέσιμα)` : "🧠 Αγορά HELP (€1,99)";
   }
 
-  renderHelpBreakdown(helpState.remaining, quizHelpCount);
+  renderHelpBreakdown(getPurchaseHelpCount(), quizHelpCount);
 
 buyBtn.addEventListener("click", () => {
     // Guards (same rules as before)
