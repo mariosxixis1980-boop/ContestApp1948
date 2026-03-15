@@ -570,19 +570,29 @@ const helpRes = await supabase
   .eq("contest_code", code)
   .maybeSingle();
 
+const contestAnchorIso = contest?.starts_at || contest?.created_at || null;
+
 const quizHelpRes = await supabase
   .from("quiz_help_rewards")
-  .select("amount, contest_code")
-  .eq("user_id", user.id)
-  .eq("contest_code", code);
+  .select("amount, created_at")
+  .eq("user_id", user.id);
 
 if (quizHelpRes.error) {
   console.warn("quiz_help_rewards load error:", quizHelpRes.error);
 }
 
-const quizHelpCount = Array.isArray(quizHelpRes.data)
-  ? quizHelpRes.data.reduce((sum, row) => sum + (Number(row.amount) || 0), 0)
-  : 0;
+const quizRewardsForCurrentContest = Array.isArray(quizHelpRes.data)
+  ? quizHelpRes.data.filter((row) => {
+      if (!contestAnchorIso) return true;
+      if (!row?.created_at) return false;
+      return new Date(row.created_at).getTime() >= new Date(contestAnchorIso).getTime();
+    })
+  : [];
+
+const quizHelpCount = quizRewardsForCurrentContest.reduce(
+  (sum, row) => sum + (Number(row.amount) || 0),
+  0
+);
 
 // IMPORTANT:
 // - If a help_purchases row exists for this contest, its `remaining` is the real available balance.
