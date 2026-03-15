@@ -4,7 +4,7 @@ const DASH_LANG_KEY = "CMP_LANG";
 const DASH_I18N = {
   el: {
     dashboardTitle: "⚽ Dashboard",
-    dashboardSub: "Το παιχνίδι είναι σε δοκιμαστική περίοδο. Ευχαριστώ για την συμμετοχή σας. Ο ΔΙΑΓΩΝΙΣΜΟΣ ΞΕΚΙΝΗΣΕ. 7 ΑΓΩΝΕΣ ΒΡΙΣΚΟΝΤΑΙ ΣΤΟ ΠΙΝΑΚΑ ΣΑΣ.. (( Βάλε 1 / X / 2, πάτα Save (ή αλλάζει αυτόματα). Κλείδωμα πριν το deadline)).",
+    dashboardSub: "Γίνεται αναβάθμιση.",
     leaderboard: "🏆 Leaderboard",
     admin: "🛠 Admin",
     logout: "🚪 Logout",
