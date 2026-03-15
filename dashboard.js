@@ -591,10 +591,8 @@ const remainingFromProfile = (() => {
   return Number.isFinite(n) ? n : null;
 })();
 
-let remaining = remainingFromPurchase ?? remainingFromProfile;
-if (remaining === null) {
-  remaining = 0;
-}
+let remaining = remainingFromPurchase ?? 0;
+if (remaining === null) { remaining = 0; }
 
 const helpState = {
   remaining,
