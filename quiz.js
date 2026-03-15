@@ -281,29 +281,64 @@ async function finishQuiz() {
     rewardMessage =
       "Δοκίμασε ξανά για να πετύχεις 10/10 και να κερδίσεις 1 Help.";
   }
-
 document.body.innerHTML = `
-  <div style="font-family:Arial,sans-serif;background:#0f172a;color:white;text-align:center;padding:40px;min-height:100vh;">
-    <h1>Το Quiz Τελείωσε</h1>
+<div style="
+font-family:Arial,sans-serif;
+background:#0f172a;
+color:white;
+text-align:center;
+padding:40px;
+min-height:100vh;
+">
 
-    <p style="font-size:22px;">Σκορ: ${score}/${questions.length}</p>
+<h1>Το Quiz Τελείωσε</h1>
 
-    <p style="font-size:18px; margin:20px 0;">${rewardMessage}</p>
+<p style="font-size:22px;">
+Σκορ: ${score}/${questions.length}
+</p>
 
-    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:20px;">
+<p style="font-size:18px; margin:20px 0;">
+${rewardMessage}
+</p>
 
-      <button onclick="location.reload()"
-      style="padding:12px 20px;font-size:16px;border:none;border-radius:8px;background:#1d9bf0;color:white;cursor:pointer;">
-      🔁 Παίξε Ξανά
-      </button>
+<div style="
+display:flex;
+justify-content:center;
+gap:12px;
+flex-wrap:wrap;
+margin-top:20px;
+">
 
-      <button onclick="window.location.href='dashboard.html'"
-      style="padding:12px 20px;font-size:16px;border:none;border-radius:8px;background:#16a34a;color:white;cursor:pointer;">
-      ⬅ Επιστροφή στο Dashboard
-      </button>
+<button
+onclick="location.reload()"
+style="
+padding:12px 20px;
+font-size:16px;
+border:none;
+border-radius:8px;
+background:#1d9bf0;
+color:white;
+cursor:pointer;
+">
+🔁 Παίξε Ξανά
+</button>
 
-    </div>
-  </div>
+<button
+onclick="window.location.href='dashboard.html'"
+style="
+padding:12px 20px;
+font-size:16px;
+border:none;
+border-radius:8px;
+background:#16a34a;
+color:white;
+cursor:pointer;
+">
+⬅ Επιστροφή στο Dashboard
+</button>
+
+</div>
+</div>
 `;
 
   if (score === 10 && typeof confetti === "function") {
