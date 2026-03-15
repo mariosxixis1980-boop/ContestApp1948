@@ -282,17 +282,29 @@ async function finishQuiz() {
       "Δοκίμασε ξανά για να πετύχεις 10/10 και να κερδίσεις 1 Help.";
   }
 
-  document.body.innerHTML = `
-    <div style="font-family:Arial;background:#0f172a;color:white;text-align:center;padding:40px;min-height:100vh;">
-      <h1>Το Quiz Τελείωσε</h1>
-      <p style="font-size:22px;">Σκορ: ${score}/${questions.length}</p>
-      <p style="font-size:18px;margin:20px 0;">${rewardMessage}</p>
+document.body.innerHTML = `
+  <div style="font-family:Arial,sans-serif;background:#0f172a;color:white;text-align:center;padding:40px;min-height:100vh;">
+    <h1>Το Quiz Τελείωσε</h1>
+
+    <p style="font-size:22px;">Σκορ: ${score}/${questions.length}</p>
+
+    <p style="font-size:18px; margin:20px 0;">${rewardMessage}</p>
+
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:20px;">
+
       <button onclick="location.reload()"
       style="padding:12px 20px;font-size:16px;border:none;border-radius:8px;background:#1d9bf0;color:white;cursor:pointer;">
-      Παίξε Ξανά
+      🔁 Παίξε Ξανά
       </button>
+
+      <button onclick="window.location.href='dashboard.html'"
+      style="padding:12px 20px;font-size:16px;border:none;border-radius:8px;background:#16a34a;color:white;cursor:pointer;">
+      ⬅ Επιστροφή στο Dashboard
+      </button>
+
     </div>
-  `;
+  </div>
+`;
 
   if (score === 10 && typeof confetti === "function") {
     confetti({
