@@ -81,7 +81,10 @@ async function startQuiz() {
       return;
     }
 
-    const { data, error } = await quizClient.rpc("get_random_quiz_questions");
+    const { data, error } = await quizClient.rpc(
+      "get_random_quiz_questions_for_user",
+      { p_user: user.id }
+    );
 
     if (error) {
       console.error("Quiz load error:", error);
@@ -94,9 +97,11 @@ async function startQuiz() {
       return;
     }
 
-    questions = shuffleArray(data);
+    questions = shuffleArray(data).slice(0, 10);
     currentQuestion = 0;
     score = 0;
+
+    await saveQuestionHistory(user.id, questions);
 
     loadQuestion();
   } catch (err) {
@@ -109,8 +114,8 @@ async function loadActiveContestCode() {
   try {
     const { data, error } = await quizClient
       .from("contests")
-      .select("code,status")
-      .eq("status", "active")
+      .select("code,status,active")
+      .eq("active", true)
       .limit(1)
       .maybeSingle();
 
@@ -119,6 +124,31 @@ async function loadActiveContestCode() {
     }
   } catch (err) {
     console.error("Active contest load error:", err);
+  }
+}
+
+async function saveQuestionHistory(userId, loadedQuestions) {
+  try {
+    if (!Array.isArray(loadedQuestions) || loadedQuestions.length === 0) return;
+
+    const rows = loadedQuestions
+      .filter(q => q && q.id !== undefined && q.id !== null)
+      .map(q => ({
+        user_id: userId,
+        question_id: q.id
+      }));
+
+    if (!rows.length) return;
+
+    const { error } = await quizClient
+      .from("quiz_question_history")
+      .insert(rows);
+
+    if (error) {
+      console.error("Question history insert error:", error);
+    }
+  } catch (err) {
+    console.error("saveQuestionHistory error:", err);
   }
 }
 
