@@ -593,7 +593,7 @@ const remainingFromProfile = (() => {
 
 let remaining = remainingFromPurchase ?? remainingFromProfile;
 if (remaining === null) {
-  remaining = helpRes.data ? DEFAULT_HELP_PER_PURCHASE : 0;
+  remaining = 0;
 }
 
 const helpState = {
