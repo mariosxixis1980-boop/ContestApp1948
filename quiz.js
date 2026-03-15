@@ -239,6 +239,27 @@ function answer(choice) {
   }
 }
 
+function formatRewardError(recordError) {
+  if (!recordError) return "Άγνωστο σφάλμα.";
+
+  if (typeof recordError === "string") return recordError;
+
+  const parts = [];
+
+  if (recordError.message) parts.push(recordError.message);
+  if (recordError.details) parts.push(recordError.details);
+  if (recordError.hint) parts.push(recordError.hint);
+  if (recordError.code) parts.push(`code: ${recordError.code}`);
+
+  if (parts.length > 0) return parts.join(" | ");
+
+  try {
+    return JSON.stringify(recordError);
+  } catch {
+    return "Άγνωστο σφάλμα reward.";
+  }
+}
+
 async function finishQuiz() {
   clearInterval(timer);
 
@@ -258,7 +279,7 @@ async function finishQuiz() {
 
       if (recordError) {
         console.error("Record quiz result error:", recordError);
-        rewardMessage = "Το σκορ αποθηκεύτηκε με πρόβλημα reward. Δοκίμασε ξανά αργότερα.";
+        rewardMessage = `Reward error: ${formatRewardError(recordError)}`;
       } else {
         if (score === 10) {
           rewardMessage = "🎉 Συγχαρητήρια! Κέρδισες 1 Help.";
@@ -271,9 +292,7 @@ async function finishQuiz() {
     }
   } catch (err) {
     console.error("Finish quiz error:", err);
-    rewardMessage = score === 10
-      ? "Έκανες 10/10, αλλά υπήρξε σφάλμα στην αποθήκευση."
-      : "Δοκίμασε ξανά για να πετύχεις 10/10.";
+    rewardMessage = `Finish error: ${err?.message || "Άγνωστο σφάλμα."}`;
   }
 
   document.body.innerHTML = `
@@ -291,7 +310,7 @@ async function finishQuiz() {
       Σκορ: ${score}/${questions.length}
     </p>
 
-    <p style="font-size:18px;margin:20px 0;">
+    <p style="font-size:18px;margin:20px 0; max-width:900px; margin-left:auto; margin-right:auto; line-height:1.5;">
       ${rewardMessage}
     </p>
 
