@@ -31,6 +31,9 @@ const DASH_I18N = {
     lockedMatches: "Κλειδωμένες",
     installIos: "📱 iPhone/iPad: Safari → Share → Add to Home Screen",
     installFallback: "Για εγκατάσταση άνοιξε το μενού του browser και πάτα Install app ή Add to Home Screen.",
+    buyHelpCount: "🛒 Help αγοράς",
+    quizHelpCount: "🧠 Help Quiz",
+    totalHelpCount: "🎯 Συνολικά Help",
   },
   en: {
     dashboardTitle: "⚽ Dashboard",
@@ -61,6 +64,9 @@ const DASH_I18N = {
     lockedMatches: "Locked",
     installIos: "📱 iPhone/iPad: Safari → Share → Add to Home Screen",
     installFallback: "To install, open the browser menu and tap Install app or Add to Home Screen.",
+    buyHelpCount: "🛒 Purchase Help",
+    quizHelpCount: "🧠 Quiz Help",
+    totalHelpCount: "🎯 Total Help",
   }
 };
 let currentLang = localStorage.getItem(DASH_LANG_KEY) || "el";
@@ -89,6 +95,14 @@ function refreshDashboardLabels() {
   if (fw) fw.textContent = t('finalWeek');
   const iph = document.getElementById('iphoneInstall');
   if (iph) iph.textContent = t('installIos');
+  const buyHelpCountPill = document.getElementById("buyHelpCountPill");
+  const quizHelpCountPill = document.getElementById("quizHelpCountPill");
+  const totalHelpCountPill = document.getElementById("totalHelpCountPill");
+  if (buyHelpCountPill || quizHelpCountPill || totalHelpCountPill) {
+    const buyVal = Number((buyHelpCountPill?.textContent || "").split(":").pop()?.trim() || 0);
+    const quizVal = Number((quizHelpCountPill?.textContent || "").split(":").pop()?.trim() || 0);
+    renderHelpBreakdown(buyVal, quizVal);
+  }
   const footerLinks = document.querySelectorAll('.footer-legal a');
   if (footerLinks[0]) footerLinks[0].textContent = t('rules');
   if (footerLinks[1]) footerLinks[1].textContent = t('terms');
@@ -147,6 +161,37 @@ function setText(id, txt) {
 function setHTML(id, html) {
   const el = document.getElementById(id);
   if (el) el.innerHTML = html ?? "";
+}
+
+function ensureHelpBreakdownUI() {
+  let box = document.getElementById("cmpHelpBreakdown");
+  if (box) return box;
+
+  const featureCard = document.querySelector(".featureCard");
+  if (!featureCard) return null;
+
+  box = document.createElement("div");
+  box.id = "cmpHelpBreakdown";
+  box.style.display = "flex";
+  box.style.gap = "8px";
+  box.style.flexWrap = "wrap";
+  box.style.marginTop = "14px";
+
+  box.innerHTML = `
+    <span id="buyHelpCountPill" class="miniPill">${t("buyHelpCount")}: 0</span>
+    <span id="quizHelpCountPill" class="miniPill">${t("quizHelpCount")}: 0</span>
+    <span id="totalHelpCountPill" class="miniPill">${t("totalHelpCount")}: 0</span>
+  `;
+
+  featureCard.appendChild(box);
+  return box;
+}
+
+function renderHelpBreakdown(purchaseCount = 0, quizCount = 0) {
+  ensureHelpBreakdownUI();
+  setText("buyHelpCountPill", `${t("buyHelpCount")}: ${purchaseCount}`);
+  setText("quizHelpCountPill", `${t("quizHelpCount")}: ${quizCount}`);
+  setText("totalHelpCountPill", `${t("totalHelpCount")}: ${Number(purchaseCount || 0) + Number(quizCount || 0)}`);
 }
 
 function notice(msg, kind = "ok") {
@@ -556,6 +601,21 @@ const helpState = {
   used: Array.isArray(helpRes.data?.used_match_ids) ? helpRes.data.used_match_ids : [],
 };
 
+const quizHelpRes = await supabase
+  .from("quiz_help_rewards")
+  .select("amount")
+  .eq("user_id", user.id);
+
+if (quizHelpRes.error) {
+  console.warn("quiz_help_rewards load error:", quizHelpRes.error);
+}
+
+const quizHelpCount = Array.isArray(quizHelpRes.data)
+  ? quizHelpRes.data.reduce((sum, row) => sum + (Number(row.amount) || 0), 0)
+  : 0;
+
+renderHelpBreakdown(helpState.remaining, quizHelpCount);
+
   // Load user lock state
   const lockRes = await supabase
     .from("user_round_locks")
@@ -806,6 +866,7 @@ helpBtn.addEventListener("click", async () => {
   const ok = await persistHelpState();
   if (ok) notice(used ? "↩️ Αφαιρέθηκε HELP από τον αγώνα." : "✅ Έβαλες HELP στον αγώνα.", "ok");
   renderHelpBtn();
+  renderHelpBreakdown(helpState.remaining, quizHelpCount);
   refreshOutcome();
 });
 
@@ -825,7 +886,8 @@ if (buyBtn) {
     buyBtn.textContent = alreadyBought ? `✅ HELP ενεργό (${helpState.remaining} διαθέσιμα)` : "🧠 Αγορά HELP (€1,99)";
   }
 
-  
+  renderHelpBreakdown(helpState.remaining, quizHelpCount);
+
 buyBtn.addEventListener("click", () => {
     // Guards (same rules as before)
     if (lateBlocked) {
