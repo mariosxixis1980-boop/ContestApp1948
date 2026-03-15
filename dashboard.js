@@ -570,39 +570,11 @@ const helpRes = await supabase
   .eq("contest_code", code)
   .maybeSingle();
 
-// HELP credits storage differs between versions:
-// - Some DBs store credits in profiles.help_credits
-// - Others store credits in help_purchases.remaining
-// - Some setups only store a purchase row (remaining not set)
-// In the last case, default to 3 credits per purchase.
-const DEFAULT_HELP_PER_PURCHASE = 3;
-
-const remainingFromPurchase = (() => {
-  const v = helpRes.data?.remaining;
-  if (v === null || v === undefined || v === "") return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-})();
-
-const remainingFromProfile = (() => {
-  const v = profile.help_credits;
-  if (v === null || v === undefined || v === "") return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-})();
-
-let remaining = remainingFromPurchase ?? 0;
-if (remaining === null) { remaining = 0; }
-
-const helpState = {
-  remaining,
-  used: Array.isArray(helpRes.data?.used_match_ids) ? helpRes.data.used_match_ids : [],
-};
-
 const quizHelpRes = await supabase
   .from("quiz_help_rewards")
-  .select("amount")
-  .eq("user_id", user.id);
+  .select("amount, contest_code")
+  .eq("user_id", user.id)
+  .eq("contest_code", code);
 
 if (quizHelpRes.error) {
   console.warn("quiz_help_rewards load error:", quizHelpRes.error);
@@ -612,8 +584,29 @@ const quizHelpCount = Array.isArray(quizHelpRes.data)
   ? quizHelpRes.data.reduce((sum, row) => sum + (Number(row.amount) || 0), 0)
   : 0;
 
-const getPurchaseHelpCount = () =>
-  Math.max(Number(helpState.remaining || 0) - Number(quizHelpCount || 0), 0);
+// IMPORTANT:
+// - If a help_purchases row exists for this contest, its `remaining` is the real available balance.
+// - If no help_purchases row exists yet, but quiz rewards exist, allow those quiz helps to be used.
+const remainingFromPurchase = (() => {
+  const v = helpRes.data?.remaining;
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+})();
+
+const totalAvailableHelp = remainingFromPurchase !== null
+  ? remainingFromPurchase
+  : quizHelpCount;
+
+const helpState = {
+  remaining: Number(totalAvailableHelp || 0),
+  used: Array.isArray(helpRes.data?.used_match_ids) ? helpRes.data.used_match_ids : [],
+};
+
+const getPurchaseHelpCount = () => {
+  if (!helpRes.data) return 0;
+  return Math.max(Number(helpState.remaining || 0) - Number(quizHelpCount || 0), 0);
+};
 
 renderHelpBreakdown(getPurchaseHelpCount(), quizHelpCount);
 
