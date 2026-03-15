@@ -4,7 +4,8 @@ const DASH_LANG_KEY = "CMP_LANG";
 const DASH_I18N = {
   el: {
     dashboardTitle: "⚽ Dashboard",
-    dashboardSub: "Γίνεται αναβάθμιση.",
+    dashboardSub: "Γίνεται αναβάθμιση.
+		ΕΠΕΣΤΡΕΦΟΥΜΕ ΣΥΝΤΟΜΑ.",
     leaderboard: "🏆 Leaderboard",
     admin: "🛠 Admin",
     logout: "🚪 Logout",
