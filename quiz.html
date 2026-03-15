@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <title>CMP Quiz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body{
+      font-family: Arial, sans-serif;
+      background:#0f172a;
+      color:white;
+      text-align:center;
+      padding:20px;
+      margin:0;
+    }
+
+    .quiz-container{
+      max-width:520px;
+      margin:40px auto;
+    }
+
+    h1{
+      margin-bottom:20px;
+    }
+
+    .timer{
+      margin-bottom:10px;
+      font-size:20px;
+      font-weight:700;
+    }
+
+    .progress{
+      margin-bottom:20px;
+      font-size:18px;
+      font-weight:700;
+    }
+
+    .question{
+      font-size:22px;
+      margin-bottom:24px;
+      min-height:60px;
+    }
+
+    .answers button{
+      display:block;
+      width:100%;
+      margin:12px 0;
+      padding:14px;
+      font-size:17px;
+      border:none;
+      border-radius:10px;
+      background:#1d9bf0;
+      color:white;
+      cursor:pointer;
+      transition: background 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
+    }
+
+    .answers button:hover{
+      background:#1479bb;
+    }
+
+    .answers button:active{
+      transform:scale(0.98);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="quiz-container">
+    <h1>🎯 Play & Win Help</h1>
+
+    <div class="timer" id="timer">Χρόνος: 5</div>
+    <div class="progress" id="progress">Ερώτηση 1 / 10</div>
+
+    <div class="question" id="question">Loading question...</div>
+
+    <div class="answers">
+      <button id="a"></button>
+      <button id="b"></button>
+      <button id="c"></button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="quiz.js"></script>
+</body>
+</html>

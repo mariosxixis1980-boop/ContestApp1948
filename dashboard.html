@@ -19,6 +19,7 @@
       --amber:rgba(241,196,15,.16); --amberb:rgba(241,196,15,.45);
       --red:rgba(231,76,60,.14); --redb:rgba(231,76,60,.45);
       --blue:rgba(52,152,219,.18); --blueb:rgba(52,152,219,.45);
+      --purple:rgba(168,85,247,.16); --purpleb:rgba(168,85,247,.45);
     }
     *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
     body{
@@ -94,24 +95,21 @@
       background:rgba(0,0,0,.35);color:var(--text);font-weight:900;
     }
 
-    /* Make the user's pick look locked (red) too */
     select.lockedPick{
       border-color: rgba(255, 70, 70, .75);
       background: rgba(255, 70, 70, .10);
       box-shadow: 0 0 0 1px rgba(255,70,70,.18) inset;
     }
   
-/* Final Week pill - strong green */
-#finalWeekPill{
-  background: rgba(0,255,0,.12);
-  border: 2px solid #00ff00;
-  color: #00ff00;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: .6px;
-  box-shadow: 0 0 14px rgba(0,255,0,.35);
-}
-
+    #finalWeekPill{
+      background: rgba(0,255,0,.12);
+      border: 2px solid #00ff00;
+      color: #00ff00;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      box-shadow: 0 0 14px rgba(0,255,0,.35);
+    }
 
     .match{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
     .matchLeft{flex:1;min-width:0}
@@ -119,6 +117,55 @@
     .matchMeta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}
     .matchActions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
     .matchActions .btn{padding:10px 12px}
+
+    /* Quiz card */
+    .featureCard{
+      margin-top:14px;
+      border:1px solid var(--purpleb);
+      background:linear-gradient(180deg, rgba(168,85,247,.18), rgba(168,85,247,.08));
+      border-radius:20px;
+      padding:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+    .featureTop{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+    .featureTitle{
+      font-size:22px;
+      font-weight:950;
+      margin:0;
+    }
+    .featureSub{
+      margin-top:6px;
+      color:var(--muted);
+      font-weight:800;
+      line-height:1.45;
+    }
+    .featureMeta{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+    .miniPill{
+      display:inline-block;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.22);
+      font-weight:900;
+      font-size:14px;
+    }
+    .quizBtn{
+      min-width:160px;
+      background:var(--purple);
+      border-color:var(--purpleb);
+    }
+
     #installBtn{display:none}
     @media (max-width:700px){
       body{padding:12px}
@@ -133,6 +180,14 @@
       .matchActions{width:100%;justify-content:stretch}
       .matchActions .btn{flex:1 1 0;min-width:0}
       .pill{max-width:100%}
+
+      .featureTop{
+        flex-direction:column;
+        align-items:stretch;
+      }
+      .quizBtn{
+        width:100%;
+      }
     }
     .footer-legal{margin:22px auto 0;max-width:520px;text-align:center;font-size:13px;color:rgba(255,255,255,.65)}
     .footer-legal a{margin:0 10px;color:rgba(255,255,255,.8);text-decoration:none}
@@ -140,7 +195,7 @@
     .install-note{display:none;font-size:13px;color:var(--muted);font-weight:800}
     .install-note.show{display:block}
     .passwordWrap{position:relative}
-</style>
+  </style>
 </head>
 <body>
   <div class="wrap">
@@ -170,7 +225,7 @@
         <div class="pill" id="roundInfo">Αγωνιστική: -</div>
         <div class="pill" id="deadlineInfo">Deadline: -</div>
         <div class="pill" id="statusPill">Κατάσταση: -</div>
-	        <div class="pill" id="finalWeekPill" style="display:none;">🏁 Final Week</div>
+        <div class="pill" id="finalWeekPill" style="display:none;">🏁 Final Week</div>
       </div>
 
       <div class="row">
@@ -180,10 +235,28 @@
 
       <div id="notice" class="notice"></div>
 
+      <div class="featureCard">
+        <div class="featureTop">
+          <div>
+            <div class="featureTitle">🎯 Play Quiz & Win Help</div>
+            <div class="featureSub">
+              Απάντησε 10/10 σωστά και κέρδισε 1 Help.<br>
+              Μπορείς να παίξεις μέχρι 2 φορές την ημέρα.
+            </div>
+            <div class="featureMeta">
+              <span class="miniPill">🏆 10/10 = 1 Help</span>
+              <span class="miniPill">⏱ 5 δευτερόλεπτα</span>
+              <span class="miniPill">📅 2 φορές / ημέρα</span>
+            </div>
+          </div>
+
+          <a class="btn quizBtn" href="quiz.html">🎮 Play Now</a>
+        </div>
+      </div>
+
       <div id="matches"></div>
     </div>
   </div>
-
 
   <footer class="footer-legal">
     <a href="rules.html" target="_blank">Κανονισμός</a>
