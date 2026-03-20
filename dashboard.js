@@ -446,9 +446,50 @@ async function main() {
     });
   }
 
-  const profile = await safeGetProfile(user.id);
+  
+// QUIZ STATUS (2 φορές τη μέρα)
+async function loadQuizStatus() {
+  try {
+    const { data: todayCount, error } =
+      await supabase.rpc("get_today_quiz_attempts", {
+        p_user: user.id
+      });
+
+    if (error) {
+      console.error("Quiz status error:", error);
+      return;
+    }
+
+    const attempts = todayCount || 0;
+
+    let text = "";
+
+    if (attempts >= 2) {
+      text = "🎯 Quiz σήμερα: 2/2 (Τέλος)";
+    } else {
+      text = `🎯 Quiz σήμερα: ${attempts}/2`;
+    }
+
+    let el = document.getElementById("quizStatusPill");
+
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "quizStatusPill";
+      el.className = "pill";
+      document.querySelector(".row").appendChild(el);
+    }
+
+    el.textContent = text;
+
+  } catch (err) {
+    console.error("Quiz status load error:", err);
+  }
+}
+
+const profile = await safeGetProfile(user.id);
   dashboardState.username = profile.username;
   setText("userPill", `${t("user")}: ${profile.username}`);
+  await loadQuizStatus();
 
   // Admin shortcut if available
   if (profile.is_admin) {
