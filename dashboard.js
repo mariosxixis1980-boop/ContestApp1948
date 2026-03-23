@@ -446,47 +446,46 @@ async function main() {
     });
   }
 
-  
-// QUIZ STATUS (2 φορές τη μέρα)
-async function loadQuizStatus() {
-  try {
-    const { data: todayCount, error } =
-      await supabase.rpc("get_today_quiz_attempts", {
-        p_user: user.id
-      });
 
-    if (error) {
-      console.error("Quiz status error:", error);
-      return;
+  // QUIZ STATUS (2 φορές τη μέρα)
+  async function loadQuizStatus() {
+    try {
+      const { data: todayCount, error } =
+        await supabase.rpc("get_today_quiz_attempts", {
+          p_user: user.id
+        });
+
+      if (error) {
+        console.error("Quiz status error:", error);
+        return;
+      }
+
+      const attempts = todayCount || 0;
+      let statusText = "";
+
+      if (attempts >= 2) {
+        statusText = "🎯 Quiz σήμερα: 2/2 (Τέλος)";
+      } else {
+        statusText = `🎯 Quiz σήμερα: ${attempts}/2`;
+      }
+
+      let el = document.getElementById("quizStatusPill");
+
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "quizStatusPill";
+        el.className = "pill";
+        const firstRow = document.querySelector(".row");
+        if (firstRow) firstRow.appendChild(el);
+      }
+
+      if (el) el.textContent = statusText;
+    } catch (err) {
+      console.error("Quiz status load error:", err);
     }
-
-    const attempts = todayCount || 0;
-
-    let text = "";
-
-    if (attempts >= 2) {
-      text = "🎯 Quiz σήμερα: 2/2 (Τέλος)";
-    } else {
-      text = `🎯 Quiz σήμερα: ${attempts}/2`;
-    }
-
-    let el = document.getElementById("quizStatusPill");
-
-    if (!el) {
-      el = document.createElement("div");
-      el.id = "quizStatusPill";
-      el.className = "pill";
-      document.querySelector(".row").appendChild(el);
-    }
-
-    el.textContent = text;
-
-  } catch (err) {
-    console.error("Quiz status load error:", err);
   }
-}
 
-const profile = await safeGetProfile(user.id);
+  const profile = await safeGetProfile(user.id);
   dashboardState.username = profile.username;
   setText("userPill", `${t("user")}: ${profile.username}`);
   await loadQuizStatus();
@@ -521,6 +520,16 @@ const profile = await safeGetProfile(user.id);
 
   const code = contest.code;
   const round = Number(contest.current_round ?? 1);
+
+  // LATE JOIN BONUS
+  try {
+    await supabase.rpc("apply_late_join_bonus", {
+      p_user: user.id,
+      p_contest_code: code
+    });
+  } catch (e) {
+    console.warn("late join bonus error", e);
+  }
 
   dashboardState.code = code;
   dashboardState.round = round;
