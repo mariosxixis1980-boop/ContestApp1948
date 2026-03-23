@@ -84,52 +84,74 @@ async function loadLeaderboard() {
   try {
     const activeContest = window.__activeContest || null;
     const activeCode = activeContest?.code || null;
+    const activeContestId = activeContest?.id || null;
 
-    const { data, error } = await supabase
-      .from('leaderboard_active_named_v')
-      .select('*');
+    if (!activeCode) {
+      const tableBody = document.querySelector('#leaderboard-body');
+      tableBody.innerHTML = '';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="rank">—</td>
+        <td colspan="5">${t('noActive')}</td>
+      `;
+      tableBody.appendChild(tr);
+      return;
+    }
 
-    if (error) throw error;
+    const { data: lbRows, error: lbError } = await supabase
+      .from('leaderboard')
+      .select('*')
+      .eq('contest_code', activeCode);
 
-    let bonusMap = new Map();
+    if (lbError) throw lbError;
 
-    if (activeCode) {
-      const { data: bonusRows, error: bonusError } = await supabase
+    const { data: profilesRows, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, username');
+
+    if (profilesError) throw profilesError;
+
+    let participantRows = [];
+    if (activeContestId) {
+      const { data, error } = await supabase
         .from('contest_participants')
         .select('user_id, late_join_bonus')
-        .eq('contest_code', activeCode);
+        .eq('contest_id', activeContestId);
 
-      if (bonusError) {
-        console.warn('Late join bonus load error:', bonusError);
+      if (error) {
+        console.warn('contest_participants load error:', error);
       } else {
-        (bonusRows || []).forEach((row) => {
-          bonusMap.set(String(row.user_id), Number(row.late_join_bonus || 0));
-        });
+        participantRows = data || [];
       }
     }
 
-    const merged = (data || []).map((row) => {
-      const lateBonus = bonusMap.get(String(row.user_id || '')) || 0;
+    const usernameMap = new Map((profilesRows || []).map((p) => [String(p.id), p.username || '—']));
+    const bonusMap = new Map((participantRows || []).map((r) => [String(r.user_id), Number(r.late_join_bonus || 0)]));
+
+    const data = (lbRows || []).map((row) => {
+      const uid = String(row.user_id || '');
+      const lateBonus = bonusMap.get(uid) || 0;
       return {
-        ...row,
-        late_join_bonus: lateBonus,
-        total_points: Number(row.total_points ?? 0) + lateBonus
+        user_id: row.user_id,
+        username: usernameMap.get(uid) || '—',
+        contest_code: row.contest_code,
+        total_points: Number(row.points || 0) + lateBonus,
+        bonus_count: Number(row.bonus_count || 0),
+        longest_bonus_streak: Number(row.longest_bonus_streak || 0),
+        one_wrong_rounds: Number(row.one_wrong_rounds || 0),
+        late_join_bonus: lateBonus
       };
     });
 
-    merged.sort((a, b) => {
+    data.sort((a, b) => {
       const p = Number(b.total_points ?? 0) - Number(a.total_points ?? 0);
       if (p !== 0) return p;
-
       const bonus = Number(b.bonus_count ?? 0) - Number(a.bonus_count ?? 0);
       if (bonus !== 0) return bonus;
-
       const streak = Number(b.longest_bonus_streak ?? 0) - Number(a.longest_bonus_streak ?? 0);
       if (streak !== 0) return streak;
-
       const oneWrong = Number(b.one_wrong_rounds ?? 0) - Number(a.one_wrong_rounds ?? 0);
       if (oneWrong !== 0) return oneWrong;
-
       return String(a.username ?? '').localeCompare(String(b.username ?? ''));
     });
 
@@ -139,7 +161,7 @@ async function loadLeaderboard() {
     const tableBody = document.querySelector('#leaderboard-body');
     tableBody.innerHTML = '';
 
-    if (!merged || merged.length === 0) {
+    if (!data || data.length === 0) {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td class="rank">—</td>
@@ -157,19 +179,18 @@ async function loadLeaderboard() {
     let diffBelow = null;
 
     if (myId) {
-      const idx = merged.findIndex((r) => String(r.user_id || '') === String(myId));
+      const idx = data.findIndex((r) => String(r.user_id || '') === String(myId));
       if (idx >= 0) {
         myRank = idx + 1;
-
-        const myPoints = Number(merged[idx].total_points ?? 0);
+        const myPoints = Number(data[idx].total_points ?? 0);
 
         if (idx > 0) {
-          const abovePoints = Number(merged[idx - 1].total_points ?? 0);
+          const abovePoints = Number(data[idx - 1].total_points ?? 0);
           diffAbove = abovePoints - myPoints;
         }
 
-        if (idx < merged.length - 1) {
-          const belowPoints = Number(merged[idx + 1].total_points ?? 0);
+        if (idx < data.length - 1) {
+          const belowPoints = Number(data[idx + 1].total_points ?? 0);
           diffBelow = myPoints - belowPoints;
         }
       }
@@ -206,8 +227,8 @@ async function loadLeaderboard() {
       const statusLocked = String(contest?.status || '').toUpperCase() === 'LOCKED';
       const hasResultsLockedFlag = contest?.meta && Object.prototype.hasOwnProperty.call(contest.meta, 'resultsLocked');
       const contestFinished = hasResultsLockedFlag ? (contest?.meta?.resultsLocked === true) : (contest?.locked === true || statusLocked);
-      if (winnerBox && isFinalWeek && contestFinished && myId && merged.length) {
-        const top = merged[0];
+      if (winnerBox && isFinalWeek && contestFinished && myId && data.length) {
+        const top = data[0];
         if (String(top?.user_id || '') === String(myId)) {
           winnerBox.style.display = 'block';
           winnerBox.innerHTML = t('winner');
@@ -223,11 +244,11 @@ async function loadLeaderboard() {
       // ignore
     }
 
-    merged.forEach((row, index) => {
+    data.forEach((row, index) => {
       const tr = document.createElement('tr');
       if (myId && String(row.user_id || '') === String(myId)) tr.classList.add('me');
 
-      const username = row.username ?? row.email ?? '—';
+      const username = row.username ?? '—';
       const totalPoints = row.total_points ?? 0;
       const bonusCount = row.bonus_count ?? 0;
       const streak = row.longest_bonus_streak ?? 0;
@@ -249,7 +270,6 @@ async function loadLeaderboard() {
     setError(t('lbError'), e?.message ?? String(e));
   }
 }
-
 
 await loadActiveContestPill();
 await loadLeaderboard();
