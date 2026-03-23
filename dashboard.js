@@ -1113,3 +1113,47 @@ main().catch((e) => {
     }
   } catch {}
 });
+
+
+
+// CMP Splash + optional intro music
+window.addEventListener("load", () => {
+  const splash = document.getElementById("cmpSplash");
+  const audio = document.getElementById("cmpIntroAudio");
+  const soundBtn = document.getElementById("cmpSoundBtn");
+
+  if (!splash) return;
+
+  if (audio) {
+    audio.volume = 0.35;
+    const tryPlay = audio.play();
+    if (tryPlay && typeof tryPlay.then === "function") {
+      tryPlay.catch(() => {
+        if (soundBtn) soundBtn.style.display = "inline-flex";
+      });
+    }
+  }
+
+  if (soundBtn && audio) {
+    soundBtn.addEventListener("click", async () => {
+      try {
+        await audio.play();
+        soundBtn.style.display = "none";
+      } catch (err) {
+        console.warn("Intro music blocked:", err);
+      }
+    });
+  }
+
+  setTimeout(() => {
+    splash.classList.add("hide");
+  }, 2200);
+
+  setTimeout(() => {
+    if (audio && !audio.paused) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+  }, 3000);
+});
+
