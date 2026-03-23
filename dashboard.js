@@ -194,6 +194,71 @@ function renderHelpBreakdown(purchaseCount = 0, quizCount = 0) {
   setText("totalHelpCountPill", `${t("totalHelpCount")}: ${Number(purchaseCount || 0) + Number(quizCount || 0)}`);
 }
 
+
+function ensureAnnouncementUI() {
+  let box = document.getElementById("announcementBox");
+  if (box) return box;
+
+  const hostCard = document.querySelector(".card");
+  const noticeBox = document.getElementById("notice");
+  if (!hostCard) return null;
+
+  box = document.createElement("div");
+  box.id = "announcementBox";
+  box.style.display = "none";
+  box.style.marginTop = "12px";
+  box.style.padding = "14px";
+  box.style.borderRadius = "18px";
+  box.style.border = "1px solid rgba(255,255,255,.12)";
+  box.style.background = "linear-gradient(180deg, rgba(168,85,247,.16), rgba(168,85,247,.08))";
+  box.style.boxShadow = "0 10px 30px rgba(0,0,0,.25)";
+
+  box.innerHTML = `
+    <div id="announcementTitle" style="font-weight:900;font-size:18px;">📢 Ανακοίνωση</div>
+    <div id="announcementMessage" style="margin-top:6px;font-weight:700;line-height:1.45;"></div>
+  `;
+
+  if (noticeBox && noticeBox.parentNode === hostCard) {
+    hostCard.insertBefore(box, noticeBox);
+  } else {
+    hostCard.appendChild(box);
+  }
+
+  return box;
+}
+
+async function loadAnnouncement() {
+  try {
+    const { data, error } = await supabase
+      .from("announcements")
+      .select("title, message, is_active, created_at")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("Announcement load error:", error);
+      return;
+    }
+
+    if (!data || !data.message) return;
+
+    const box = ensureAnnouncementUI();
+    if (!box) return;
+
+    const titleEl = document.getElementById("announcementTitle");
+    const messageEl = document.getElementById("announcementMessage");
+
+    if (titleEl) titleEl.textContent = data.title || "📢 Ανακοίνωση";
+    if (messageEl) messageEl.textContent = data.message;
+
+    box.style.display = "block";
+  } catch (err) {
+    console.warn("Announcement load failed:", err);
+  }
+}
+
 function notice(msg, kind = "ok") {
   if (window.__cmpLateBlocked && kind !== "err") return;
   const box = document.getElementById("notice");
@@ -446,50 +511,9 @@ async function main() {
     });
   }
 
-  
-// QUIZ STATUS (2 φορές τη μέρα)
-async function loadQuizStatus() {
-  try {
-    const { data: todayCount, error } =
-      await supabase.rpc("get_today_quiz_attempts", {
-        p_user: user.id
-      });
-
-    if (error) {
-      console.error("Quiz status error:", error);
-      return;
-    }
-
-    const attempts = todayCount || 0;
-
-    let text = "";
-
-    if (attempts >= 2) {
-      text = "🎯 Quiz σήμερα: 2/2 (Τέλος)";
-    } else {
-      text = `🎯 Quiz σήμερα: ${attempts}/2`;
-    }
-
-    let el = document.getElementById("quizStatusPill");
-
-    if (!el) {
-      el = document.createElement("div");
-      el.id = "quizStatusPill";
-      el.className = "pill";
-      document.querySelector(".row").appendChild(el);
-    }
-
-    el.textContent = text;
-
-  } catch (err) {
-    console.error("Quiz status load error:", err);
-  }
-}
-
-const profile = await safeGetProfile(user.id);
+  const profile = await safeGetProfile(user.id);
   dashboardState.username = profile.username;
   setText("userPill", `${t("user")}: ${profile.username}`);
-  await loadQuizStatus();
 
   // Admin shortcut if available
   if (profile.is_admin) {
@@ -519,6 +543,7 @@ const profile = await safeGetProfile(user.id);
     return;
   }
 
+  await loadAnnouncement();
   const code = contest.code;
   const round = Number(contest.current_round ?? 1);
 
@@ -1113,47 +1138,3 @@ main().catch((e) => {
     }
   } catch {}
 });
-
-
-
-// CMP Splash + optional intro music
-window.addEventListener("load", () => {
-  const splash = document.getElementById("cmpSplash");
-  const audio = document.getElementById("cmpIntroAudio");
-  const soundBtn = document.getElementById("cmpSoundBtn");
-
-  if (!splash) return;
-
-  if (audio) {
-    audio.volume = 0.35;
-    const tryPlay = audio.play();
-    if (tryPlay && typeof tryPlay.then === "function") {
-      tryPlay.catch(() => {
-        if (soundBtn) soundBtn.style.display = "inline-flex";
-      });
-    }
-  }
-
-  if (soundBtn && audio) {
-    soundBtn.addEventListener("click", async () => {
-      try {
-        await audio.play();
-        soundBtn.style.display = "none";
-      } catch (err) {
-        console.warn("Intro music blocked:", err);
-      }
-    });
-  }
-
-  setTimeout(() => {
-    splash.classList.add("hide");
-  }, 2200);
-
-  setTimeout(() => {
-    if (audio && !audio.paused) {
-      audio.pause();
-      audio.currentTime = 0;
-    }
-  }, 3000);
-});
-
