@@ -82,78 +82,16 @@ async function loadActiveContestPill() {
 
 async function loadLeaderboard() {
   try {
-    const activeContest = window.__activeContest || null;
-    const activeCode = activeContest?.code || null;
-    const activeContestId = activeContest?.id || null;
-
-    if (!activeCode) {
-      const tableBody = document.querySelector('#leaderboard-body');
-      tableBody.innerHTML = '';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="rank">—</td>
-        <td colspan="5">${t('noActive')}</td>
-      `;
-      tableBody.appendChild(tr);
-      return;
-    }
-
-    const { data: lbRows, error: lbError } = await supabase
-      .from('leaderboard')
+    const { data, error } = await supabase
+      .from('leaderboard_active_named_v')
       .select('*')
-      .eq('contest_code', activeCode);
+      .order('total_points', { ascending: false })
+      .order('bonus_count', { ascending: false })
+      .order('longest_bonus_streak', { ascending: false })
+      .order('one_wrong_rounds', { ascending: false })
+      .order('username', { ascending: true });
 
-    if (lbError) throw lbError;
-
-    const { data: profilesRows, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, username');
-
-    if (profilesError) throw profilesError;
-
-    let participantRows = [];
-    if (activeContestId) {
-      const { data, error } = await supabase
-        .from('contest_participants')
-        .select('user_id, late_join_bonus')
-        .eq('contest_id', activeContestId);
-
-      if (error) {
-        console.warn('contest_participants load error:', error);
-      } else {
-        participantRows = data || [];
-      }
-    }
-
-    const usernameMap = new Map((profilesRows || []).map((p) => [String(p.id), p.username || '—']));
-    const bonusMap = new Map((participantRows || []).map((r) => [String(r.user_id), Number(r.late_join_bonus || 0)]));
-
-    const data = (lbRows || []).map((row) => {
-      const uid = String(row.user_id || '');
-      const lateBonus = bonusMap.get(uid) || 0;
-      return {
-        user_id: row.user_id,
-        username: usernameMap.get(uid) || '—',
-        contest_code: row.contest_code,
-        total_points: Number(row.points || 0) + lateBonus,
-        bonus_count: Number(row.bonus_count || 0),
-        longest_bonus_streak: Number(row.longest_bonus_streak || 0),
-        one_wrong_rounds: Number(row.one_wrong_rounds || 0),
-        late_join_bonus: lateBonus
-      };
-    });
-
-    data.sort((a, b) => {
-      const p = Number(b.total_points ?? 0) - Number(a.total_points ?? 0);
-      if (p !== 0) return p;
-      const bonus = Number(b.bonus_count ?? 0) - Number(a.bonus_count ?? 0);
-      if (bonus !== 0) return bonus;
-      const streak = Number(b.longest_bonus_streak ?? 0) - Number(a.longest_bonus_streak ?? 0);
-      if (streak !== 0) return streak;
-      const oneWrong = Number(b.one_wrong_rounds ?? 0) - Number(a.one_wrong_rounds ?? 0);
-      if (oneWrong !== 0) return oneWrong;
-      return String(a.username ?? '').localeCompare(String(b.username ?? ''));
-    });
+    if (error) throw error;
 
     const { data: userData } = await supabase.auth.getUser();
     const myId = userData?.user?.id || null;
@@ -174,6 +112,7 @@ async function loadLeaderboard() {
       return;
     }
 
+    // Compute my rank based on current ordering (display-only)
     let myRank = null;
     let diffAbove = null;
     let diffBelow = null;
@@ -182,6 +121,7 @@ async function loadLeaderboard() {
       const idx = data.findIndex((r) => String(r.user_id || '') === String(myId));
       if (idx >= 0) {
         myRank = idx + 1;
+
         const myPoints = Number(data[idx].total_points ?? 0);
 
         if (idx > 0) {
@@ -220,35 +160,36 @@ async function loadLeaderboard() {
       myPill.dataset.dynamic='1';
     }
 
-    try {
-      const winnerBox = document.getElementById('winnerBox');
-      const contest = window.__activeContest;
-      const isFinalWeek = contest?.meta?.finalWeek === true;
-      const statusLocked = String(contest?.status || '').toUpperCase() === 'LOCKED';
-      const hasResultsLockedFlag = contest?.meta && Object.prototype.hasOwnProperty.call(contest.meta, 'resultsLocked');
-      const contestFinished = hasResultsLockedFlag ? (contest?.meta?.resultsLocked === true) : (contest?.locked === true || statusLocked);
-      if (winnerBox && isFinalWeek && contestFinished && myId && data.length) {
-        const top = data[0];
-        if (String(top?.user_id || '') === String(myId)) {
-          winnerBox.style.display = 'block';
-          winnerBox.innerHTML = t('winner');
-        } else {
-          winnerBox.style.display = 'none';
-          winnerBox.textContent = '';
-        }
-      } else if (winnerBox) {
-        winnerBox.style.display = 'none';
-        winnerBox.textContent = '';
-      }
-    } catch (e) {
-      // ignore
-    }
+	    // Winner banner (Final Week): show ONLY to the winner when finalWeek is ON and contest is LOCKED
+	    try {
+	      const winnerBox = document.getElementById('winnerBox');
+	      const contest = window.__activeContest;
+	      const isFinalWeek = contest?.meta?.finalWeek === true;
+	      const statusLocked = String(contest?.status || '').toUpperCase() === 'LOCKED';
+	      const hasResultsLockedFlag = contest?.meta && Object.prototype.hasOwnProperty.call(contest.meta, 'resultsLocked');
+	      const contestFinished = hasResultsLockedFlag ? (contest?.meta?.resultsLocked === true) : (contest?.locked === true || statusLocked);
+	      if (winnerBox && isFinalWeek && contestFinished && myId && data.length) {
+	        const top = data[0];
+	        if (String(top?.user_id || '') === String(myId)) {
+	          winnerBox.style.display = 'block';
+	          winnerBox.innerHTML = t('winner');
+	        } else {
+	          winnerBox.style.display = 'none';
+	          winnerBox.textContent = '';
+	        }
+	      } else if (winnerBox) {
+	        winnerBox.style.display = 'none';
+	        winnerBox.textContent = '';
+	      }
+	    } catch (e) {
+	      // ignore
+	    }
 
     data.forEach((row, index) => {
       const tr = document.createElement('tr');
       if (myId && String(row.user_id || '') === String(myId)) tr.classList.add('me');
 
-      const username = row.username ?? '—';
+      const username = row.username ?? row.email ?? '—';
       const totalPoints = row.total_points ?? 0;
       const bonusCount = row.bonus_count ?? 0;
       const streak = row.longest_bonus_streak ?? 0;

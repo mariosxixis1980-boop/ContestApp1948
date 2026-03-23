@@ -423,45 +423,6 @@ function buildMatchRow(match, pick, disabled) {
   return { row: div, sel, btn, helpBtn, finalEl, statusEl };
 }
 
-
-async function ensureContestParticipant(contestId, userId, currentRound) {
-  try {
-    const { data: existing, error: existingError } = await supabase
-      .from("contest_participants")
-      .select("contest_id, user_id")
-      .eq("contest_id", contestId)
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (existingError) {
-      console.warn("contest_participants lookup error:", existingError);
-      return;
-    }
-
-    if (existing) return;
-
-    const payload = {
-      contest_id: contestId,
-      user_id: userId,
-      joined_at: new Date().toISOString(),
-      joined_round: Number(currentRound || 1),
-      late_join_bonus: 0,
-      late_join_bonus_applied: false
-    };
-
-    const { error: insertError } = await supabase
-      .from("contest_participants")
-      .insert(payload);
-
-    if (insertError) {
-      console.warn("contest_participants insert error:", insertError);
-    }
-  } catch (err) {
-    console.warn("ensureContestParticipant error:", err);
-  }
-}
-
-
 async function main() {
   await ensureSupabaseConfig();
 
@@ -485,46 +446,47 @@ async function main() {
     });
   }
 
+  
+// QUIZ STATUS (2 φορές τη μέρα)
+async function loadQuizStatus() {
+  try {
+    const { data: todayCount, error } =
+      await supabase.rpc("get_today_quiz_attempts", {
+        p_user: user.id
+      });
 
-  // QUIZ STATUS (2 φορές τη μέρα)
-  async function loadQuizStatus() {
-    try {
-      const { data: todayCount, error } =
-        await supabase.rpc("get_today_quiz_attempts", {
-          p_user: user.id
-        });
-
-      if (error) {
-        console.error("Quiz status error:", error);
-        return;
-      }
-
-      const attempts = todayCount || 0;
-      let statusText = "";
-
-      if (attempts >= 2) {
-        statusText = "🎯 Quiz σήμερα: 2/2 (Τέλος)";
-      } else {
-        statusText = `🎯 Quiz σήμερα: ${attempts}/2`;
-      }
-
-      let el = document.getElementById("quizStatusPill");
-
-      if (!el) {
-        el = document.createElement("div");
-        el.id = "quizStatusPill";
-        el.className = "pill";
-        const firstRow = document.querySelector(".row");
-        if (firstRow) firstRow.appendChild(el);
-      }
-
-      if (el) el.textContent = statusText;
-    } catch (err) {
-      console.error("Quiz status load error:", err);
+    if (error) {
+      console.error("Quiz status error:", error);
+      return;
     }
-  }
 
-  const profile = await safeGetProfile(user.id);
+    const attempts = todayCount || 0;
+
+    let text = "";
+
+    if (attempts >= 2) {
+      text = "🎯 Quiz σήμερα: 2/2 (Τέλος)";
+    } else {
+      text = `🎯 Quiz σήμερα: ${attempts}/2`;
+    }
+
+    let el = document.getElementById("quizStatusPill");
+
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "quizStatusPill";
+      el.className = "pill";
+      document.querySelector(".row").appendChild(el);
+    }
+
+    el.textContent = text;
+
+  } catch (err) {
+    console.error("Quiz status load error:", err);
+  }
+}
+
+const profile = await safeGetProfile(user.id);
   dashboardState.username = profile.username;
   setText("userPill", `${t("user")}: ${profile.username}`);
   await loadQuizStatus();
@@ -559,17 +521,6 @@ async function main() {
 
   const code = contest.code;
   const round = Number(contest.current_round ?? 1);
-
-  await ensureContestParticipant(contest.id, user.id, round);
-
-  try {
-    await supabase.rpc("apply_late_join_bonus", {
-      p_user: user.id,
-      p_contest_code: code
-    });
-  } catch (e) {
-    console.warn("late join bonus error", e);
-  }
 
   dashboardState.code = code;
   dashboardState.round = round;
@@ -627,15 +578,15 @@ async function main() {
       // Αν created_at υπάρχει και είναι ΜΕΤΑ το starts_at και δεν είναι participant -> μπλοκάρουμε.
       if (userCreatedAt && !isNaN(userCreatedAt.getTime())) {
         if (userCreatedAt.getTime() > startsAt.getTime() && !isParticipant) {
-          lateBlocked = false;
-          window.__cmpLateBlocked = false;
+          lateBlocked = true;
+          window.__cmpLateBlocked = true;
 
           // Persistent banner (χωρίς auto-hide)
           const box = document.getElementById("notice");
           if (box) {
             box.className = "notice warn";
             box.style.display = "block";
-            box.textContent = "🎁 Μπήκες μετά την έναρξη. Αν δικαιούσαι, το Late Join Bonus θα εφαρμοστεί αυτόματα.";
+            box.textContent = "⛔ Ο διαγωνισμός ξεκίνησε. Θα ενημερώσουμε για τον επόμενο 🙌";
             try { clearTimeout(window.__cmpNoticeT); } catch {}
           }
         }
@@ -1062,7 +1013,7 @@ buyBtn.addEventListener("click", () => {
   applyLockUI(isLocked || lateBlocked || deadlinePassed);
   refreshDashboardLabels();
 
-  // Late users επιτρέπονται πλέον κανονικά
+  // Late users: κρατάμε το dashboard αλλά όλα disabled
   if (lateBlocked && lockBtn) {
     lockBtn.disabled = true;
   }
