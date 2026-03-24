@@ -1236,12 +1236,6 @@ function setNotificationStatus(message) {
   if (notificationStatus) notificationStatus.textContent = message || "";
 }
 
-
-function getPushVapidPublicKey() {
-  console.log("getPushVapidPublicKey called");
-  return VAPID_PUBLIC_KEY_FALLBACK;
-}
-
 function getPushVapidPublicKey() {
   return VAPID_PUBLIC_KEY_FALLBACK;
 }
