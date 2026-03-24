@@ -1,4 +1,3 @@
-// CMP Service Worker
 self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
@@ -8,32 +7,30 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  let data = {};
+  let data = { title: "CMP", body: "Νέα ειδοποίηση" };
   try {
-    data = event.data ? event.data.json() : {};
-  } catch {
-    data = { body: event.data ? event.data.text() : "" };
-  }
+    data = event.data ? event.data.json() : data;
+  } catch (_) {}
 
-  const title = data.title || "CMP Notification";
-  const options = {
-    body: data.body || "Έχεις νέα ενημέρωση από το CMP.",
-    icon: "./icon-192.png",
-    badge: "./icon-192.png",
-    data: { url: data.url || "./dashboard.html" },
-  };
-
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration.showNotification(data.title || "CMP", {
+      body: data.body || "Νέα ειδοποίηση",
+      icon: "./icon-192.png",
+      badge: "./icon-192.png",
+      data: data.url || "./dashboard.html",
+    })
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = event.notification?.data?.url || "./dashboard.html";
+  const targetUrl = event.notification?.data || "./dashboard.html";
+
   event.waitUntil((async () => {
-    const allClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
-    for (const client of allClients) {
+    const clientList = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of clientList) {
       if ("focus" in client) {
-        client.navigate(targetUrl);
+        client.navigate?.(targetUrl);
         return client.focus();
       }
     }

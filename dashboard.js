@@ -1166,6 +1166,141 @@ window.addEventListener("appinstalled", () => {
   if (installBtnEl) installBtnEl.style.display = "none";
 });
 
+
+
+// ================================
+// PUSH NOTIFICATIONS
+// ================================
+const CMP_VAPID_PUBLIC_KEY = "BLXf2zzs5jNB1SesRaNd8W2Ipep5eB10k91k9k25NordIOsLgb0Jawxpx0D1y-qge1kCGGVGdqPc4dcBHE7lOXaXs";
+
+function setNotificationStatus(message, type = "warn") {
+  const el = document.getElementById("notificationStatus");
+  if (!el) return;
+  el.style.display = "block";
+  el.className = `notice ${type}`.trim();
+  el.textContent = message || "";
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+}
+
+async function getExistingPushSubscription() {
+  if (!("serviceWorker" in navigator)) return null;
+  const registration = await navigator.serviceWorker.ready;
+  return registration.pushManager.getSubscription();
+}
+
+async function refreshNotificationUI() {
+  const btn = document.getElementById("enableNotificationsBtn");
+  if (!btn) return;
+
+  if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+    btn.disabled = true;
+    setNotificationStatus("Το browser δεν υποστηρίζει push notifications.", "err");
+    return;
+  }
+
+  const permission = Notification.permission;
+  const sub = await getExistingPushSubscription().catch(() => null);
+
+  if (permission === "denied") {
+    btn.disabled = true;
+    setNotificationStatus("Έχεις μπλοκάρει τα notifications για αυτό το site.", "err");
+    return;
+  }
+
+  if (sub) {
+    btn.disabled = true;
+    btn.textContent = "Notifications Enabled ✅";
+    setNotificationStatus("Οι ειδοποιήσεις είναι ενεργές σε αυτή τη συσκευή.", "ok");
+    return;
+  }
+
+  btn.disabled = false;
+  btn.textContent = "Enable Notifications";
+  setNotificationStatus(permission === "granted" ? "Πάτα για να γίνει εγγραφή της συσκευής." : "Δεν έχουν ενεργοποιηθεί ακόμα.", "warn");
+}
+
+async function subscribeUserToPush() {
+  try {
+    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      throw new Error("Το browser δεν υποστηρίζει push notifications.");
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) throw new Error("Πρέπει να κάνεις login πρώτα.");
+
+    setNotificationStatus("Ζητάω άδεια για notifications...", "warn");
+
+    let permission = Notification.permission;
+    if (permission !== "granted") {
+      permission = await Notification.requestPermission();
+    }
+    if (permission !== "granted") {
+      throw new Error("Δεν δόθηκε άδεια για notifications.");
+    }
+
+    const registration = await navigator.serviceWorker.register("./sw.js");
+    await navigator.serviceWorker.ready;
+
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(CMP_VAPID_PUBLIC_KEY),
+      });
+    }
+
+    const subJson = subscription.toJSON();
+    const endpoint = subJson.endpoint;
+    const p256dh = subJson.keys?.p256dh;
+    const auth = subJson.keys?.auth;
+
+    if (!endpoint || !p256dh || !auth) {
+      throw new Error("Δεν διαβάστηκαν σωστά τα push keys της συσκευής.");
+    }
+
+    const payload = {
+      user_id: user.id,
+      endpoint,
+      p256dh,
+      auth,
+    };
+
+    let result = await supabase
+      .from("push_subscriptions")
+      .upsert(payload, { onConflict: "endpoint" });
+
+    if (result.error) {
+      result = await supabase
+        .from("push_subscriptions")
+        .delete()
+        .eq("endpoint", endpoint);
+
+      if (result.error) throw result.error;
+
+      result = await supabase.from("push_subscriptions").insert(payload);
+      if (result.error) throw result.error;
+    }
+
+    setNotificationStatus("Οι ειδοποιήσεις ενεργοποιήθηκαν σε αυτή τη συσκευή!", "ok");
+    await refreshNotificationUI();
+  } catch (err) {
+    console.error("Push subscribe failed:", err);
+    setNotificationStatus(err?.message || "Αποτυχία ενεργοποίησης notifications.", "err");
+  }
+}
+
+window.subscribeUserToPush = subscribeUserToPush;
+
+document.getElementById("enableNotificationsBtn")?.addEventListener("click", subscribeUserToPush);
+window.addEventListener("load", () => { refreshNotificationUI().catch(console.warn); });
+
 main().catch((e) => {
   console.error(e);
   try {
@@ -1221,123 +1356,3 @@ window.addEventListener("load", () => {
   }, 3000);
 });
 
-
-
-// ==============================
-// PUSH NOTIFICATIONS
-// ==============================
-const CMP_VAPID_PUBLIC_KEY = "BIxI2zsjNB15esRaNd8M2Ipep5eBl0k9lk9k25NordIOsLgbOJawxpx0DIy-qge1kCGGVGdqPc4dcBHt71DXaXs";
-
-function setNotificationStatus(message, type = "warn") {
-  const el = document.getElementById("notificationStatus");
-  if (!el) return;
-  el.style.display = "block";
-  el.className = `notice ${type}`.trim();
-  el.textContent = message || "";
-}
-
-function getPushVapidPublicKey() {
-  return String(CMP_VAPID_PUBLIC_KEY || "").trim();
-}
-
-function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
-  return outputArray;
-}
-
-async function savePushSubscription(subscription, userId) {
-  const sub = subscription?.toJSON ? subscription.toJSON() : subscription;
-  const endpoint = sub?.endpoint || "";
-  const p256dh = sub?.keys?.p256dh || "";
-  const auth = sub?.keys?.auth || "";
-
-  if (!endpoint || !p256dh || !auth) {
-    throw new Error("Άκυρα στοιχεία subscription.");
-  }
-
-  const payload = { user_id: userId, endpoint, p256dh, auth };
-
-  let result = await supabase
-    .from("push_subscriptions")
-    .upsert([payload], { onConflict: "endpoint" });
-
-  if (!result.error) return;
-
-  const msg = String(result.error.message || "").toLowerCase();
-  if (msg.includes("constraint") || msg.includes("duplicate") || msg.includes("on conflict")) {
-    result = await supabase
-      .from("push_subscriptions")
-      .delete()
-      .eq("endpoint", endpoint);
-    if (result.error) throw result.error;
-
-    const retry = await supabase
-      .from("push_subscriptions")
-      .insert([payload]);
-    if (retry.error) throw retry.error;
-    return;
-  }
-
-  throw result.error;
-}
-
-async function enablePushNotifications() {
-  try {
-    const vapidPublicKey = getPushVapidPublicKey();
-    if (!vapidPublicKey || vapidPublicKey === "PASTE_YOUR_VAPID_PUBLIC_KEY_HERE" || vapidPublicKey.length < 40) {
-      throw new Error("Βάλε πρώτα το VAPID public key στο dashboard.js.");
-    }
-
-    if (!("Notification" in window)) {
-      throw new Error("Το browser δεν υποστηρίζει notifications.");
-    }
-    if (!("serviceWorker" in navigator)) {
-      throw new Error("Το browser δεν υποστηρίζει service worker.");
-    }
-
-    setNotificationStatus("Ενεργοποίηση...", "warn");
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
-    if (!user) throw new Error("Πρέπει να κάνεις login.");
-
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      throw new Error("Δεν δόθηκε άδεια για notifications.");
-    }
-
-    const registration = await navigator.serviceWorker.getRegistration("./");
-    const swRegistration = registration || await navigator.serviceWorker.register("./sw.js");
-
-    let subscription = await swRegistration.pushManager.getSubscription();
-    if (!subscription) {
-      subscription = await swRegistration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-      });
-    }
-
-    await savePushSubscription(subscription, user.id);
-    setNotificationStatus("Οι ειδοποιήσεις ενεργοποιήθηκαν!", "ok");
-  } catch (err) {
-    console.error("Enable notifications error:", err);
-    setNotificationStatus(`Σφάλμα: ${err?.message || err}`, "err");
-  }
-}
-
-window.addEventListener("load", async () => {
-  const btn = document.getElementById("enableNotificationsBtn");
-  if (btn) btn.addEventListener("click", enablePushNotifications);
-
-  try {
-    if (!("serviceWorker" in navigator)) return;
-    const registration = await navigator.serviceWorker.getRegistration("./");
-    if (!registration) return;
-    const sub = await registration.pushManager.getSubscription();
-    if (sub) setNotificationStatus("Οι ειδοποιήσεις είναι ήδη ενεργές σε αυτή τη συσκευή.", "ok");
-  } catch {}
-});
