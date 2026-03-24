@@ -1172,6 +1172,7 @@ window.addEventListener("appinstalled", () => {
 // PUSH NOTIFICATIONS
 // ================================
 const CMP_VAPID_PUBLIC_KEY = "BLXf2zzs5jNB1SesRaNd8W2Ipep5eB10k91k9k25NordIOsLgb0Jawxpx0D1y-qge1kCGGVGdqPc4dcBHE7lOXaXs";
+const CMP_SW_URL = "/sw.js?v=mobilefix2";
 
 function setNotificationStatus(message, type = "warn") {
   const el = document.getElementById("notificationStatus");
@@ -1181,16 +1182,47 @@ function setNotificationStatus(message, type = "warn") {
   el.textContent = message || "";
 }
 
+function getCleanVapidPublicKey() {
+  return String(CMP_VAPID_PUBLIC_KEY || "").trim().replace(/\s+/g, "");
+}
+
 function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+  const clean = String(base64String || "").trim().replace(/\s+/g, "");
+  if (!clean) throw new Error("Λείπει το VAPID public key.");
+  if (!/^[A-Za-z0-9\-_]+$/.test(clean)) {
+    throw new Error("Το VAPID public key έχει λάθος χαρακτήρες.");
+  }
+
+  const padding = "=".repeat((4 - (clean.length % 4)) % 4);
+  const base64 = (clean + padding).replace(/-/g, "+").replace(/_/g, "/");
+
+  let rawData = "";
+  try {
+    rawData = atob(base64);
+  } catch (err) {
+    console.error("VAPID decode error:", err, { clean, base64 });
+    throw new Error("Το VAPID key δεν διαβάστηκε σωστά στη συσκευή. Κάνε refresh και δοκίμασε ξανά.");
+  }
+
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function getServiceWorkerRegistration() {
+  if (!("serviceWorker" in navigator)) return null;
+  const existing = await navigator.serviceWorker.getRegistration("/");
+  if (existing) return existing;
+  const registration = await navigator.serviceWorker.register(CMP_SW_URL, { scope: "/" });
+  await navigator.serviceWorker.ready;
+  return registration;
 }
 
 async function getExistingPushSubscription() {
-  if (!("serviceWorker" in navigator)) return null;
-  const registration = await navigator.serviceWorker.ready;
+  const registration = await getServiceWorkerRegistration();
+  if (!registration) return null;
   return registration.pushManager.getSubscription();
 }
 
@@ -1245,21 +1277,22 @@ async function subscribeUserToPush() {
       throw new Error("Δεν δόθηκε άδεια για notifications.");
     }
 
-    const registration = await navigator.serviceWorker.register("./sw.js");
-    await navigator.serviceWorker.ready;
+    const vapidKey = getCleanVapidPublicKey();
+    const registration = await getServiceWorkerRegistration();
+    if (!registration) throw new Error("Δεν έγινε register το service worker.");
 
     let subscription = await registration.pushManager.getSubscription();
     if (!subscription) {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(CMP_VAPID_PUBLIC_KEY),
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
       });
     }
 
     const subJson = subscription.toJSON();
-    const endpoint = subJson.endpoint;
-    const p256dh = subJson.keys?.p256dh;
-    const auth = subJson.keys?.auth;
+    const endpoint = String(subJson.endpoint || "").trim();
+    const p256dh = String(subJson.keys?.p256dh || "").trim();
+    const auth = String(subJson.keys?.auth || "").trim();
 
     if (!endpoint || !p256dh || !auth) {
       throw new Error("Δεν διαβάστηκαν σωστά τα push keys της συσκευής.");

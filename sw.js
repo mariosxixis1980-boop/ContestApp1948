@@ -1,3 +1,4 @@
+// CMP notifications service worker v2
 self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
