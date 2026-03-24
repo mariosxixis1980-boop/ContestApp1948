@@ -1288,7 +1288,7 @@ async function savePushSubscription(subscription, userId) {
 async function enablePushNotifications() {
   try {
     const vapidPublicKey = getPushVapidPublicKey();
-    if (!vapidPublicKey || vapidPublicKey === "BGrJHES_fqxXjsObv3Huh-jBT7dSugUfH2O7a6Xu1EJiG6n7KPowWB9CfnygMk2l2W7RDd55zIbAoIlXwYlH5yI  " || vapidPublicKey.length < 40) {
+    if (!vapidPublicKey || vapidPublicKey === "PASTE_YOUR_VAPID_PUBLIC_KEY_HERE" || vapidPublicKey.length < 40) {
       throw new Error("Βάλε πρώτα το VAPID public key στο dashboard.js.");
     }
 
