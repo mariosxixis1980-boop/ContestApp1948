@@ -1226,7 +1226,7 @@ window.addEventListener("load", () => {
 // ==============================
 // PUSH NOTIFICATIONS
 // ==============================
-const CMP_VAPID_PUBLIC_KEY = "BGrJHES_fqxXjsObv3Huh-jBT7dSugUfH2O7a6Xu1EJiG6n7KPowWB9CfnygMk2l2W7RDd55zIbAoIlXwYlH5yI";
+const CMP_VAPID_PUBLIC_KEY = "BIxI2zsjNB15esRaNd8M2Ipep5eBl0k9lk9k25NordIOsLgbOJawxpx0DIy-qge1kCGGVGdqPc4dcBHt71DXaXs";
 
 function setNotificationStatus(message, type = "warn") {
   const el = document.getElementById("notificationStatus");
