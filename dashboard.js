@@ -1230,9 +1230,16 @@ const enableNotificationsBtn = document.getElementById("enableNotificationsBtn")
 const notificationStatus = document.getElementById("notificationStatus");
 const VAPID_PUBLIC_KEY_STORAGE = "CMP_VAPID_PUBLIC_KEY";
 const VAPID_PUBLIC_KEY_FALLBACK = "BFHLs4TTgIQlFVTWHBRYBd0jWcWb-9KhHQ1nF5BRC2RsUkVHL-wXEIc55jvkN-xdgHKZYy-eBzLYjlkhxYEUQKA";
+console.log("CMP VAPID KEY:", VAPID_PUBLIC_KEY_FALLBACK);
 
 function setNotificationStatus(message) {
   if (notificationStatus) notificationStatus.textContent = message || "";
+}
+
+
+function getPushVapidPublicKey() {
+  console.log("getPushVapidPublicKey called");
+  return VAPID_PUBLIC_KEY_FALLBACK;
 }
 
 function getPushVapidPublicKey() {
