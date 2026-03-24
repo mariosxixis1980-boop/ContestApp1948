@@ -1393,4 +1393,58 @@ async function sendAdminPush() {
 wire();
 await restoreFromSupabaseIfNeeded();
 loadFromStorage();
+/* =========================
+   ADMIN SEND PUSH
+========================= */
+async function sendAdminPush() {
+  try {
+    const title = (document.getElementById("pushTitle")?.value || "").trim();
+    const message = (document.getElementById("pushMessage")?.value || "").trim();
+    const statusEl = document.getElementById("pushStatus");
+
+    if (!title || !message) {
+      if (statusEl) statusEl.textContent = "Βάλε τίτλο και μήνυμα.";
+      return;
+    }
+
+    if (statusEl) statusEl.textContent = "Αποστολή...";
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+    if (!session?.access_token) throw new Error("Δεν βρέθηκε session.");
+
+    const res = await fetch("https://qhgdcouuxtcjrlsztvwm.supabase.co/functions/v1/send-push", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + session.access_token
+      },
+      body: JSON.stringify({
+        title,
+        message
+      })
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(json?.error || "Αποτυχία αποστολής");
+    }
+
+    if (statusEl) statusEl.textContent = "Το notification στάλθηκε.";
+    document.getElementById("pushTitle").value = "";
+    document.getElementById("pushMessage").value = "";
+  } catch (err) {
+    console.error("sendAdminPush error:", err);
+    const statusEl = document.getElementById("pushStatus");
+    if (statusEl) statusEl.textContent = "Σφάλμα: " + (err.message || err);
+  }
+}
+
+/* wire admin push button safely */
+const __sendPushBtn = document.getElementById("sendPushBtn");
+if (__sendPushBtn) {
+  __sendPushBtn.addEventListener("click", sendAdminPush);
+}
+	
 })();
