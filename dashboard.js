@@ -1236,12 +1236,9 @@ function setNotificationStatus(message) {
 }
 
 function getPushVapidPublicKey() {
-  try {
-    const saved = localStorage.getItem(VAPID_PUBLIC_KEY_STORAGE);
-    if (saved && saved.trim()) return saved.trim();
-  } catch {}
   return VAPID_PUBLIC_KEY_FALLBACK;
 }
+
 
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
