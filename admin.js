@@ -1316,6 +1316,9 @@ function wire() {
   // next contest start
   if ($("nsSave")) $("nsSave").addEventListener("click", saveNextStart);
   if ($("nsClear")) $("nsClear").addEventListener("click", clearNextStart);
+
+  // push notifications
+  if ($("sendPushBtn")) $("sendPushBtn").addEventListener("click", sendAdminPush);
 }
 
 /* =========================
@@ -1323,6 +1326,66 @@ function wire() {
 ========================= */
 window.toggleOff = toggleOff;
 window.saveRes = saveRes;
+
+
+/* =========================
+   ADMIN SEND PUSH
+========================= */
+async function sendAdminPush() {
+  const titleEl = $("pushTitle");
+  const msgEl = $("pushMessage");
+  const statusEl = $("pushStatus");
+
+  const title = String(titleEl?.value || "").trim();
+  const message = String(msgEl?.value || "").trim();
+
+  if (!title || !message) {
+    if (statusEl) statusEl.textContent = "Βάλε τίτλο και μήνυμα.";
+    N("Βάλε τίτλο και μήνυμα.", "warn");
+    return;
+  }
+
+  try {
+    if (statusEl) statusEl.textContent = "Αποστολή...";
+
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+
+    const accessToken = data?.session?.access_token;
+    if (!accessToken) throw new Error("Δεν βρέθηκε session.");
+
+    const projectAnonKey =
+      localStorage.getItem("CMP_SUPABASE_ANON_KEY") ||
+      "sb_publishable_mRB7RNRcLPF9n1eMjhwa0Q_3ya9qB5q";
+
+    const res = await fetch("https://qhgdcouuxtcjrlsztvwm.supabase.co/functions/v1/send-push", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + accessToken,
+        "apikey": projectAnonKey
+      },
+      body: JSON.stringify({ title, message })
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(json?.error || "Αποτυχία αποστολής");
+    }
+
+    if (statusEl) statusEl.textContent = "✅ Το notification στάλθηκε.";
+    if (titleEl) titleEl.value = "";
+    if (msgEl) msgEl.value = "";
+    N("✅ Το notification στάλθηκε.", "ok");
+  } catch (err) {
+    console.error("sendAdminPush error:", err);
+    const msg = String(err?.message || err || "Άγνωστο σφάλμα");
+    if (statusEl) statusEl.textContent = "Σφάλμα: " + msg;
+    N("Σφάλμα: " + msg, "err");
+  }
+}
+
 
 /* =========================
    START
