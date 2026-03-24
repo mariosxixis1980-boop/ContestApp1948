@@ -1229,7 +1229,7 @@ window.addEventListener("load", () => {
 const enableNotificationsBtn = document.getElementById("enableNotificationsBtn");
 const notificationStatus = document.getElementById("notificationStatus");
 const VAPID_PUBLIC_KEY_STORAGE = "CMP_VAPID_PUBLIC_KEY";
-const VAPID_PUBLIC_KEY_FALLBACK = "VALE_EDO_TO_VAPID_PUBLIC_KEY";
+const VAPID_PUBLIC_KEY_FALLBACK = "BFHLs4TTgIQlFVTWHBRYBd0jWcWb-9KhHQ1nF5BRC2RsUkVHL-wXEIc55jvkN-xdgHKZYy-eBzLYjlkhxYEUQKA";
 
 function setNotificationStatus(message) {
   if (notificationStatus) notificationStatus.textContent = message || "";
