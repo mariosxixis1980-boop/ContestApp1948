@@ -1332,66 +1332,6 @@ window.saveRes = saveRes;
    ADMIN SEND PUSH
 ========================= */
 async function sendAdminPush() {
-  const statusEl = document.getElementById("pushStatus");
-  const title = document.getElementById("pushTitle").value;
-  const message = document.getElementById("pushMessage").value;
-
-  try {
-    statusEl.textContent = "Αποστολή...";
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
-      statusEl.textContent = "Δεν είσαι συνδεδεμένος";
-      return;
-    }
-
-    const res = await fetch(
-      "https://qhgdco...supabase.co/functions/v1/send-push",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + session.access_token,
-        },
-        body: JSON.stringify({
-          title: title,
-          message: message,
-        }),
-      }
-    );
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.error || "Αποτυχία αποστολής");
-    }
-
-    statusEl.textContent = "Το notification στάλθηκε!";
-  } catch (err) {
-    console.error("sendAdminPush error:", err);
-    statusEl.textContent = "Σφάλμα: " + err.message;
-  }
-}
-
-document
-  .getElementById("sendPushBtn")
-  .addEventListener("click", sendAdminPush);
-
-
-
-/* =========================
-   START
-========================= */
-wire();
-await restoreFromSupabaseIfNeeded();
-loadFromStorage();
-/* =========================
-   ADMIN SEND PUSH
-========================= */
-async function sendAdminPush() {
   try {
     const title = (document.getElementById("pushTitle")?.value || "").trim();
     const message = (document.getElementById("pushMessage")?.value || "").trim();
@@ -1427,8 +1367,10 @@ async function sendAdminPush() {
     }
 
     if (statusEl) statusEl.textContent = "Το notification στάλθηκε.";
-    document.getElementById("pushTitle").value = "";
-    document.getElementById("pushMessage").value = "";
+    const titleEl = document.getElementById("pushTitle");
+    const msgEl = document.getElementById("pushMessage");
+    if (titleEl) titleEl.value = "";
+    if (msgEl) msgEl.value = "";
   } catch (err) {
     console.error("sendAdminPush error:", err);
     const statusEl = document.getElementById("pushStatus");
@@ -1436,10 +1378,9 @@ async function sendAdminPush() {
   }
 }
 
-/* wire admin push button safely */
 const __sendPushBtn = document.getElementById("sendPushBtn");
 if (__sendPushBtn) {
   __sendPushBtn.addEventListener("click", sendAdminPush);
 }
-	
+
 })();
