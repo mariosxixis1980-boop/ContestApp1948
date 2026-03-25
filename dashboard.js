@@ -257,6 +257,63 @@ async function loadAnnouncement() {
   }
 }
 
+
+async function syncHelpUsageRow(userId, matchId, contestCode, shouldUse) {
+  try {
+    if (shouldUse) {
+      let res = await supabase
+        .from("help_used")
+        .insert({
+          user_id: userId,
+          match_id: matchId,
+          contest_id: contestCode,
+        });
+
+      if (res.error) {
+        // fallback for schemas without contest_id
+        res = await supabase
+          .from("help_used")
+          .insert({
+            user_id: userId,
+            match_id: matchId,
+          });
+      }
+
+      if (res.error) {
+        console.error("help_used insert error:", res.error);
+        return { ok: false, error: res.error };
+      }
+    } else {
+      let res = await supabase
+        .from("help_used")
+        .delete()
+        .eq("user_id", userId)
+        .eq("match_id", matchId)
+        .eq("contest_id", contestCode);
+
+      if (res.error) {
+        // fallback for schemas without contest_id
+        res = await supabase
+          .from("help_used")
+          .delete()
+          .eq("user_id", userId)
+          .eq("match_id", matchId);
+      }
+
+      if (res.error) {
+        console.error("help_used delete error:", res.error);
+        return { ok: false, error: res.error };
+      }
+    }
+
+    return { ok: true };
+  } catch (err) {
+    console.error("syncHelpUsageRow failed:", err);
+    return { ok: false, error: err };
+  }
+}
+
+
 function notice(msg, kind = "ok") {
   if (window.__cmpLateBlocked && kind !== "err") return;
   const box = document.getElementById("notice");
@@ -983,7 +1040,9 @@ helpBtn.addEventListener("click", async () => {
     return;
   }
 
-  // toggle
+  const prevUsed = [...helpState.used];
+  const prevRemaining = helpState.remaining;
+
   if (used) {
     helpState.used = helpState.used.filter((x) => x !== matchId);
     helpState.remaining += 1;
@@ -992,8 +1051,29 @@ helpBtn.addEventListener("click", async () => {
     helpState.remaining -= 1;
   }
 
-  const ok = await persistHelpState();
-  if (ok) notice(used ? "↩️ Αφαιρέθηκε HELP από τον αγώνα." : "✅ Έβαλες HELP στον αγώνα.", "ok");
+  const purchaseSaved = await persistHelpState();
+  if (!purchaseSaved) {
+    helpState.used = prevUsed;
+    helpState.remaining = prevRemaining;
+    renderHelpBtn();
+    renderHelpBreakdown(getPurchaseHelpCount(), getQuizHelpCount());
+    refreshOutcome();
+    return;
+  }
+
+  const usageSaved = await syncHelpUsageRow(user.id, matchId, code, !used);
+  if (!usageSaved.ok) {
+    helpState.used = prevUsed;
+    helpState.remaining = prevRemaining;
+    await persistHelpState();
+    notice("❌ Το HELP δεν αποθηκεύτηκε σωστά για βαθμολόγηση.", "err");
+    renderHelpBtn();
+    renderHelpBreakdown(getPurchaseHelpCount(), getQuizHelpCount());
+    refreshOutcome();
+    return;
+  }
+
+  notice(used ? "↩️ Αφαιρέθηκε HELP από τον αγώνα." : "✅ Έβαλες HELP στον αγώνα.", "ok");
   renderHelpBtn();
   renderHelpBreakdown(getPurchaseHelpCount(), getQuizHelpCount());
   refreshOutcome();
@@ -1171,7 +1251,7 @@ window.addEventListener("appinstalled", () => {
 // ================================
 // PUSH NOTIFICATIONS
 // ================================
-const CMP_VAPID_PUBLIC_KEY = "BIxI2zsjNB15esRaNd8M2Ipep5eBl0k9lk9k25NordIOsLgbOJawxpx0DIy-qge1kCGGVGdqPc4dcBHt71DXaXs";
+const CMP_VAPID_PUBLIC_KEY = "BLXf2zzs5jNB1SesRaNd8W2Ipep5eB10k91k9k25NordIOsLgb0Jawxpx0D1y-qge1kCGGVGdqPc4dcBHE7lOXaXs";
 const CMP_SW_URL = "/sw.js?v=mobilefix2";
 
 function setNotificationStatus(message, type = "warn") {
