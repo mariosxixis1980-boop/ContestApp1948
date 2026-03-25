@@ -1338,29 +1338,24 @@ async function sendAdminPush() {
   try {
     statusEl.textContent = "Αποστολή...";
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
       statusEl.textContent = "Δεν είσαι συνδεδεμένος";
       return;
     }
 
-    const res = await fetch(
-      "https://qhgdco...supabase.co/functions/v1/send-push",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + session.access_token,
-        },
-        body: JSON.stringify({
-          title: title,
-          message: message,
-        }),
-      }
-    );
+    const res = await fetch("https://qhgdcouuxtcjrlsztvwm.supabase.co/functions/v1/send-push", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + session.access_token
+      },
+      body: JSON.stringify({
+        title: title,
+        message: message
+      })
+    });
 
     const data = await res.json();
 
@@ -1375,8 +1370,7 @@ async function sendAdminPush() {
   }
 }
 
-document
-  .getElementById("sendPushBtn")
-  .addEventListener("click", sendAdminPush);
+// Button listener
+document.getElementById("sendPushBtn").addEventListener("click", sendAdminPush);
 
 })();
