@@ -257,63 +257,6 @@ async function loadAnnouncement() {
   }
 }
 
-
-async function syncHelpUsageRow(userId, matchId, contestCode, shouldUse) {
-  try {
-    if (shouldUse) {
-      let res = await supabase
-        .from("help_used")
-        .insert({
-          user_id: userId,
-          match_id: matchId,
-          contest_id: contestCode,
-        });
-
-      if (res.error) {
-        // fallback for schemas without contest_id
-        res = await supabase
-          .from("help_used")
-          .insert({
-            user_id: userId,
-            match_id: matchId,
-          });
-      }
-
-      if (res.error) {
-        console.error("help_used insert error:", res.error);
-        return { ok: false, error: res.error };
-      }
-    } else {
-      let res = await supabase
-        .from("help_used")
-        .delete()
-        .eq("user_id", userId)
-        .eq("match_id", matchId)
-        .eq("contest_id", contestCode);
-
-      if (res.error) {
-        // fallback for schemas without contest_id
-        res = await supabase
-          .from("help_used")
-          .delete()
-          .eq("user_id", userId)
-          .eq("match_id", matchId);
-      }
-
-      if (res.error) {
-        console.error("help_used delete error:", res.error);
-        return { ok: false, error: res.error };
-      }
-    }
-
-    return { ok: true };
-  } catch (err) {
-    console.error("syncHelpUsageRow failed:", err);
-    return { ok: false, error: err };
-  }
-}
-
-
 function notice(msg, kind = "ok") {
   if (window.__cmpLateBlocked && kind !== "err") return;
   const box = document.getElementById("notice");
@@ -1040,9 +983,7 @@ helpBtn.addEventListener("click", async () => {
     return;
   }
 
-  const prevUsed = [...helpState.used];
-  const prevRemaining = helpState.remaining;
-
+  // toggle
   if (used) {
     helpState.used = helpState.used.filter((x) => x !== matchId);
     helpState.remaining += 1;
@@ -1051,29 +992,8 @@ helpBtn.addEventListener("click", async () => {
     helpState.remaining -= 1;
   }
 
-  const purchaseSaved = await persistHelpState();
-  if (!purchaseSaved) {
-    helpState.used = prevUsed;
-    helpState.remaining = prevRemaining;
-    renderHelpBtn();
-    renderHelpBreakdown(getPurchaseHelpCount(), getQuizHelpCount());
-    refreshOutcome();
-    return;
-  }
-
-  const usageSaved = await syncHelpUsageRow(user.id, matchId, code, !used);
-  if (!usageSaved.ok) {
-    helpState.used = prevUsed;
-    helpState.remaining = prevRemaining;
-    await persistHelpState();
-    notice("❌ Το HELP δεν αποθηκεύτηκε σωστά για βαθμολόγηση.", "err");
-    renderHelpBtn();
-    renderHelpBreakdown(getPurchaseHelpCount(), getQuizHelpCount());
-    refreshOutcome();
-    return;
-  }
-
-  notice(used ? "↩️ Αφαιρέθηκε HELP από τον αγώνα." : "✅ Έβαλες HELP στον αγώνα.", "ok");
+  const ok = await persistHelpState();
+  if (ok) notice(used ? "↩️ Αφαιρέθηκε HELP από τον αγώνα." : "✅ Έβαλες HELP στον αγώνα.", "ok");
   renderHelpBtn();
   renderHelpBreakdown(getPurchaseHelpCount(), getQuizHelpCount());
   refreshOutcome();
