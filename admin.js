@@ -1327,7 +1327,6 @@ function wire() {
 window.toggleOff = toggleOff;
 window.saveRes = saveRes;
 
-
 /* =========================
    ADMIN SEND PUSH
 ========================= */
@@ -1382,5 +1381,7 @@ const __sendPushBtn = document.getElementById("sendPushBtn");
 if (__sendPushBtn) {
   __sendPushBtn.addEventListener("click", sendAdminPush);
 }
+
+
 
 })();
