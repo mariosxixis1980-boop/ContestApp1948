@@ -1327,21 +1327,38 @@ function wire() {
 window.toggleOff = toggleOff;
 window.saveRes = saveRes;
 
+wire();
+await restoreFromSupabaseIfNeeded();
+loadFromStorage();
+
 /* =========================
    ADMIN SEND PUSH
 ========================= */
 async function sendAdminPush() {
   const statusEl = document.getElementById("pushStatus");
-  const title = document.getElementById("pushTitle").value;
-  const message = document.getElementById("pushMessage").value;
+  const titleEl = document.getElementById("pushTitle");
+  const messageEl = document.getElementById("pushMessage");
+  const btn = document.getElementById("sendPushBtn");
+
+  if (!statusEl || !titleEl || !messageEl || !btn) return;
+
+  const title = (titleEl.value || "").trim();
+  const message = (messageEl.value || "").trim();
+
+  if (!title || !message) {
+    statusEl.textContent = "Βάλε τίτλο και μήνυμα.";
+    return;
+  }
 
   try {
     statusEl.textContent = "Αποστολή...";
 
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
 
-    if (!session) {
-      statusEl.textContent = "Δεν είσαι συνδεδεμένος";
+    const session = data?.session;
+    if (!session?.access_token) {
+      statusEl.textContent = "Δεν βρέθηκε session.";
       return;
     }
 
@@ -1352,25 +1369,29 @@ async function sendAdminPush() {
         "Authorization": "Bearer " + session.access_token
       },
       body: JSON.stringify({
-        title: title,
-        message: message
+        title,
+        message
       })
     });
 
-    const data = await res.json();
+    const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      throw new Error(data.error || "Αποτυχία αποστολής");
+      throw new Error(json?.error || "Αποτυχία αποστολής");
     }
 
     statusEl.textContent = "Το notification στάλθηκε!";
+    titleEl.value = "";
+    messageEl.value = "";
   } catch (err) {
     console.error("sendAdminPush error:", err);
-    statusEl.textContent = "Σφάλμα: " + err.message;
+    statusEl.textContent = "Σφάλμα: " + (err?.message || err);
   }
 }
 
-// Button listener
-document.getElementById("sendPushBtn").addEventListener("click", sendAdminPush);
+const __sendPushBtn = document.getElementById("sendPushBtn");
+if (__sendPushBtn) {
+  __sendPushBtn.addEventListener("click", sendAdminPush);
+}
 
 })();
