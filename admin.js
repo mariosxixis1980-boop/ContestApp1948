@@ -1331,57 +1331,52 @@ window.saveRes = saveRes;
    ADMIN SEND PUSH
 ========================= */
 async function sendAdminPush() {
-  try {
-    const title = (document.getElementById("pushTitle")?.value || "").trim();
-    const message = (document.getElementById("pushMessage")?.value || "").trim();
-    const statusEl = document.getElementById("pushStatus");
+  const statusEl = document.getElementById("pushStatus");
+  const title = document.getElementById("pushTitle").value;
+  const message = document.getElementById("pushMessage").value;
 
-    if (!title || !message) {
-      if (statusEl) statusEl.textContent = "Βάλε τίτλο και μήνυμα.";
+  try {
+    statusEl.textContent = "Αποστολή...";
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      statusEl.textContent = "Δεν είσαι συνδεδεμένος";
       return;
     }
 
-    if (statusEl) statusEl.textContent = "Αποστολή...";
+    const res = await fetch(
+      "https://qhgdco...supabase.co/functions/v1/send-push",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + session.access_token,
+        },
+        body: JSON.stringify({
+          title: title,
+          message: message,
+        }),
+      }
+    );
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) throw sessionError;
-    if (!session?.access_token) throw new Error("Δεν βρέθηκε session.");
-
-    const res = await fetch("https://qhgdcouuxtcjrlsztvwm.supabase.co/functions/v1/send-push", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + session.access_token
-      },
-      body: JSON.stringify({
-        title,
-        message
-      })
-    });
-
-    const json = await res.json().catch(() => ({}));
+    const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(json?.error || "Αποτυχία αποστολής");
+      throw new Error(data.error || "Αποτυχία αποστολής");
     }
 
-    if (statusEl) statusEl.textContent = "Το notification στάλθηκε.";
-    const titleEl = document.getElementById("pushTitle");
-    const msgEl = document.getElementById("pushMessage");
-    if (titleEl) titleEl.value = "";
-    if (msgEl) msgEl.value = "";
+    statusEl.textContent = "Το notification στάλθηκε!";
   } catch (err) {
     console.error("sendAdminPush error:", err);
-    const statusEl = document.getElementById("pushStatus");
-    if (statusEl) statusEl.textContent = "Σφάλμα: " + (err.message || err);
+    statusEl.textContent = "Σφάλμα: " + err.message;
   }
 }
 
-const __sendPushBtn = document.getElementById("sendPushBtn");
-if (__sendPushBtn) {
-  __sendPushBtn.addEventListener("click", sendAdminPush);
-}
-
-
+document
+  .getElementById("sendPushBtn")
+  .addEventListener("click", sendAdminPush);
 
 })();
