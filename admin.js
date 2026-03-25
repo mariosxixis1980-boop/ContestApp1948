@@ -1353,12 +1353,11 @@ async function sendAdminPush() {
   try {
     statusEl.textContent = "Αποστολή...";
 
-    const { data, error } = await supabase.auth.getSession();
+    const { data: { session }, error } = await supabase.auth.getSession();
     if (error) throw error;
 
-    const session = data?.session;
-    if (!session?.access_token) {
-      statusEl.textContent = "Δεν βρέθηκε session.";
+    if (!session || !session.access_token) {
+      statusEl.textContent = "Δεν είσαι συνδεδεμένος";
       return;
     }
 
@@ -1374,24 +1373,23 @@ async function sendAdminPush() {
       })
     });
 
-    const json = await res.json().catch(() => ({}));
+    const json = await res.json();
 
     if (!res.ok) {
-      throw new Error(json?.error || "Αποτυχία αποστολής");
+      throw new Error(json.error || "Αποτυχία αποστολής");
     }
 
     statusEl.textContent = "Το notification στάλθηκε!";
     titleEl.value = "";
     messageEl.value = "";
+
   } catch (err) {
     console.error("sendAdminPush error:", err);
-    statusEl.textContent = "Σφάλμα: " + (err?.message || err);
+    statusEl.textContent = "Σφάλμα: " + err.message;
   }
 }
 
-const __sendPushBtn = document.getElementById("sendPushBtn");
-if (__sendPushBtn) {
-  __sendPushBtn.addEventListener("click", sendAdminPush);
-}
+document.getElementById("sendPushBtn").addEventListener("click", sendAdminPush);
+
 
 })();
