@@ -313,36 +313,6 @@ function deadlinePassed() {
 
 function nid() { return Math.random().toString(36).slice(2, 7).toUpperCase(); }
 
-function slugPart(v) {
-  return String(v || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 24);
-}
-
-function stableMatchId(round, date, time, home, away) {
-  const r = Number(round || 1);
-  const d = String(date || "").trim();
-  const t = String(time || "").trim();
-  const h = slugPart(home);
-  const a = slugPart(away);
-  return `m_${r}_${d}_${t}_${h}_${a}`;
-}
-
-function normalizeStoredMatchesIds() {
-  if (!Array.isArray(matches)) return;
-  const cid = active?.id;
-  const round = Number((cid && (getMeta(cid) || {}).round) || 1);
-  matches = matches.map((m, idx) => {
-    const nextId = stableMatchId(round, m.date, m.time, m.home || m.h, m.away || m.a);
-    return { ...m, id: nextId, n: Number(m.n || idx + 1) };
-  });
-}
-
 function ensure() {
   if (!active) {
     N("Δεν υπάρχει ενεργός διαγωνισμός.", "err");
@@ -453,7 +423,7 @@ function addMatch() {
   const a = ($("a")?.value || "").trim();
   if (!d || !t || !h || !a) return N("Συμπλήρωσε όλα τα στοιχεία.", "warn");
 
-  const id = stableMatchId((mta.round || 1), d, t, h, a);
+  const id = "m_" + Date.now() + "_" + Math.floor(Math.random() * 9999);
   matches.push({
     id,
     n: matches.length + 1,
@@ -1227,7 +1197,6 @@ function renderContestPills() {
    MAIN RENDER
 ========================= */
 function render() {
-  normalizeStoredMatchesIds();
   const s = sess();
 
   // ✅ guard panel
@@ -1280,10 +1249,6 @@ async function restoreFromSupabaseIfNeeded() {
     // matches snapshot
     if (Array.isArray(data.matches)) W(K.M, data.matches);
     else if (data.matches) W(K.M, data.matches);
-    matches = R(K.M, []);
-    if (!Array.isArray(matches)) matches = [];
-    normalizeStoredMatchesIds();
-    W(K.M, matches);
 
     // meta snapshot (store under contest id)
     if (data.meta) {
@@ -1300,8 +1265,6 @@ function loadFromStorage() {
   active = R(K.A, null);
   matches = R(K.M, []);
   if (!Array.isArray(matches)) matches = [];
-  normalizeStoredMatchesIds();
-  W(K.M, matches);
   render();
 }
 
@@ -1353,9 +1316,6 @@ function wire() {
   // next contest start
   if ($("nsSave")) $("nsSave").addEventListener("click", saveNextStart);
   if ($("nsClear")) $("nsClear").addEventListener("click", clearNextStart);
-
-  // push notifications
-  if ($("sendPushBtn")) $("sendPushBtn").addEventListener("click", sendAdminPush);
 }
 
 /* =========================
@@ -1364,69 +1324,10 @@ function wire() {
 window.toggleOff = toggleOff;
 window.saveRes = saveRes;
 
+/* =========================
+   START
+========================= */
 wire();
 await restoreFromSupabaseIfNeeded();
 loadFromStorage();
-
-/* =========================
-   ADMIN SEND PUSH
-========================= */
-async function sendAdminPush() {
-  const statusEl = document.getElementById("pushStatus");
-  const titleEl = document.getElementById("pushTitle");
-  const messageEl = document.getElementById("pushMessage");
-  const btn = document.getElementById("sendPushBtn");
-
-  if (!statusEl || !titleEl || !messageEl || !btn) return;
-
-  const title = (titleEl.value || "").trim();
-  const message = (messageEl.value || "").trim();
-
-  if (!title || !message) {
-    statusEl.textContent = "Βάλε τίτλο και μήνυμα.";
-    return;
-  }
-
-  try {
-    statusEl.textContent = "Αποστολή...";
-
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) throw error;
-
-    if (!session || !session.access_token) {
-      statusEl.textContent = "Δεν είσαι συνδεδεμένος";
-      return;
-    }
-
-    const res = await fetch("https://qhgdcouuxtcjrlsztvwm.supabase.co/functions/v1/send-push", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + session.access_token
-      },
-      body: JSON.stringify({
-        title,
-        message
-      })
-    });
-
-    const json = await res.json();
-
-    if (!res.ok) {
-      throw new Error(json.error || "Αποτυχία αποστολής");
-    }
-
-    statusEl.textContent = "Το notification στάλθηκε!";
-    titleEl.value = "";
-    messageEl.value = "";
-
-  } catch (err) {
-    console.error("sendAdminPush error:", err);
-    statusEl.textContent = "Σφάλμα: " + err.message;
-  }
-}
-
-document.getElementById("sendPushBtn").addEventListener("click", sendAdminPush);
-
-
 })();
