@@ -406,6 +406,27 @@ function matchTitle(m) {
   return `${h} vs ${a}`;
 }
 
+
+function slugPart(v) {
+  return String(v || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 24);
+}
+
+function canonicalMatchId(match, round = 1) {
+  if (match && match.id) return String(match.id);
+  const d = String(match?.date || "").trim();
+  const t = String(match?.time || "").trim();
+  const h = slugPart(match?.home ?? match?.h);
+  const a = slugPart(match?.away ?? match?.a);
+  return `m_${Number(round || 1)}_${d}_${t}_${h}_${a}`;
+}
+
 function buildMatchRow(match, pick, disabled) {
   const div = document.createElement("div");
   div.className = "match";
@@ -436,7 +457,7 @@ function buildMatchRow(match, pick, disabled) {
   actionsRow.className = "matchActions";
 
   const sel = document.createElement("select");
-  sel.dataset.matchId = match.id;
+  sel.dataset.matchId = canonicalMatchId(match, dashboardState.round || 1);
   sel.innerHTML = `
     <option value="">${t("pickPlaceholder")}</option>
     <option value="1">1</option>
@@ -460,14 +481,14 @@ function buildMatchRow(match, pick, disabled) {
   btn.className = "btn";
   btn.style.padding = "8px 12px";
   btn.textContent = t("save");
-  btn.dataset.matchId = match.id;
+  btn.dataset.matchId = canonicalMatchId(match, dashboardState.round || 1);
   btn.disabled = !!disabled;
 
   const helpBtn = document.createElement("button");
   helpBtn.className = "btn";
   helpBtn.style.padding = "8px 10px";
   helpBtn.textContent = t("help");
-  helpBtn.dataset.matchId = match.id;
+  helpBtn.dataset.matchId = canonicalMatchId(match, dashboardState.round || 1);
   helpBtn.disabled = !!disabled;
 
   metaRow.appendChild(sel);
@@ -737,7 +758,7 @@ const quizHelpAvailable = Math.max(
 
 const helpState = {
   remaining: Number(totalAvailableHelp || 0),
-  used: Array.isArray(helpRes.data?.used_match_ids) ? helpRes.data.used_match_ids : [],
+  used: Array.isArray(helpRes.data?.used_match_ids) ? helpRes.data.used_match_ids.map((x) => String(x)) : [],
 };
 
 const getPurchaseHelpCount = () => purchaseHelpAvailable;
@@ -780,7 +801,7 @@ renderHelpBreakdown(getPurchaseHelpCount(), getQuizHelpCount());
   refreshDashboardLabels();
 
   const predMap = new Map();
-  (predsRes.data || []).forEach((p) => predMap.set(p.match_id, p.pick));
+  (predsRes.data || []).forEach((p) => predMap.set(String(p.match_id), p.pick));
 
 
 // Load match results (for "Τελικό" + status display)
@@ -837,7 +858,7 @@ function computeFinalAndStatus(matchId, pickVal) {
   if (!matchesBox) return;
   matchesBox.innerHTML = "";
 
-  const matches = Array.isArray(contest.matches) ? contest.matches : [];
+  const matches = (Array.isArray(contest.matches) ? contest.matches : []).map((m) => ({ ...m, id: canonicalMatchId(m, round) }));
   if (!matches.length) {
     matchesBox.innerHTML = `<div class="mini">❌ Δεν υπάρχουν αγώνες.</div>`;
     return;
@@ -899,7 +920,7 @@ function computeFinalAndStatus(matchId, pickVal) {
   }
 
   for (const m of matches) {
-    const matchId = m.id;
+    const matchId = canonicalMatchId(m, round);
     const existingPick = predMap.get(matchId) ?? "";
     const { row, sel, btn, helpBtn, finalEl, statusEl } = buildMatchRow(m, existingPick, isLocked || deadlinePassed || lateBlocked);
 
@@ -957,7 +978,7 @@ async function persistHelpState() {
     contest_code: code,
     purchased_at: new Date().toISOString(),
     remaining: helpState.remaining,
-    used_match_ids: helpState.used,
+    used_match_ids: [...new Set((helpState.used || []).map((x) => String(x)))],
     updated_at: new Date().toISOString(),
   };
   const { error } = await supabase
