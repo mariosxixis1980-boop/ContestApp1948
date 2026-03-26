@@ -213,6 +213,19 @@ hr{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0}
           <button class="btn" id="nsClear" type="button">🧽 Clear</button>
         </div>
         <div class="mini" id="nsPreview" style="margin-top:8px">-</div>
+
+        <hr/>
+
+        <div class="big">🔔 Αποστολή Notification</div>
+        <div class="mini">Θα σταλεί σε όλους τους ενεργοποιημένους χρήστες (κινητό + PC).</div>
+        <label>Τίτλος</label>
+        <input id="pushTitle" type="text" placeholder="π.χ Νέοι αγώνες μπήκαν"/>
+        <label>Μήνυμα</label>
+        <textarea id="pushMessage" placeholder="π.χ Μπες και κάνε προβλέψεις πριν το deadline"></textarea>
+        <div class="row">
+          <button class="btn bl" id="sendPushBtn" type="button">📢 Send Notification</button>
+        </div>
+        <div class="mini" id="pushStatus" style="margin-top:8px">-</div>
       </div>
 
     </div>

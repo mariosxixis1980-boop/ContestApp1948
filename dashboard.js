@@ -194,6 +194,69 @@ function renderHelpBreakdown(purchaseCount = 0, quizCount = 0) {
   setText("totalHelpCountPill", `${t("totalHelpCount")}: ${Number(purchaseCount || 0) + Number(quizCount || 0)}`);
 }
 
+
+function ensureAnnouncementUI() {
+  let box = document.getElementById("announcementBox");
+  if (box) return box;
+
+  const hostCard = document.querySelector(".card");
+  const noticeBox = document.getElementById("notice");
+  if (!hostCard) return null;
+
+  box = document.createElement("div");
+  box.id = "announcementBox";
+  box.style.display = "none";
+  box.style.marginTop = "12px";
+  box.style.padding = "14px";
+  box.style.borderRadius = "18px";
+  box.style.border = "1px solid rgba(255,255,255,.12)";
+  box.style.background = "linear-gradient(180deg, rgba(168,85,247,.16), rgba(168,85,247,.08))";
+  box.style.boxShadow = "0 10px 30px rgba(0,0,0,.25)";
+  box.innerHTML = `
+    <div id="announcementTitle" style="font-weight:900;font-size:18px;">📢 Ανακοίνωση</div>
+    <div id="announcementMessage" style="margin-top:6px;font-weight:700;line-height:1.45;"></div>
+  `;
+
+  if (noticeBox && noticeBox.parentNode === hostCard) {
+    hostCard.insertBefore(box, noticeBox);
+  } else {
+    hostCard.appendChild(box);
+  }
+  return box;
+}
+
+async function loadAnnouncement() {
+  try {
+    const { data, error } = await supabase
+      .from("announcements")
+      .select("title, message, is_active, created_at")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("Announcement load error:", error);
+      return;
+    }
+
+    if (!data || !data.message) return;
+
+    const box = ensureAnnouncementUI();
+    if (!box) return;
+
+    const titleEl = document.getElementById("announcementTitle");
+    const messageEl = document.getElementById("announcementMessage");
+
+    if (titleEl) titleEl.textContent = data.title || "📢 Ανακοίνωση";
+    if (messageEl) messageEl.textContent = data.message;
+
+    box.style.display = "block";
+  } catch (err) {
+    console.warn("Announcement load failed:", err);
+  }
+}
+
 function notice(msg, kind = "ok") {
   if (window.__cmpLateBlocked && kind !== "err") return;
   const box = document.getElementById("notice");
@@ -343,6 +406,27 @@ function matchTitle(m) {
   return `${h} vs ${a}`;
 }
 
+
+function slugPart(v) {
+  return String(v || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 24);
+}
+
+function canonicalMatchId(match, round = 1) {
+  if (match && match.id) return String(match.id);
+  const d = String(match?.date || "").trim();
+  const t = String(match?.time || "").trim();
+  const h = slugPart(match?.home ?? match?.h);
+  const a = slugPart(match?.away ?? match?.a);
+  return `m_${Number(round || 1)}_${d}_${t}_${h}_${a}`;
+}
+
 function buildMatchRow(match, pick, disabled) {
   const div = document.createElement("div");
   div.className = "match";
@@ -373,7 +457,7 @@ function buildMatchRow(match, pick, disabled) {
   actionsRow.className = "matchActions";
 
   const sel = document.createElement("select");
-  sel.dataset.matchId = match.id;
+  sel.dataset.matchId = canonicalMatchId(match, dashboardState.round || 1);
   sel.innerHTML = `
     <option value="">${t("pickPlaceholder")}</option>
     <option value="1">1</option>
@@ -397,14 +481,14 @@ function buildMatchRow(match, pick, disabled) {
   btn.className = "btn";
   btn.style.padding = "8px 12px";
   btn.textContent = t("save");
-  btn.dataset.matchId = match.id;
+  btn.dataset.matchId = canonicalMatchId(match, dashboardState.round || 1);
   btn.disabled = !!disabled;
 
   const helpBtn = document.createElement("button");
   helpBtn.className = "btn";
   helpBtn.style.padding = "8px 10px";
   helpBtn.textContent = t("help");
-  helpBtn.dataset.matchId = match.id;
+  helpBtn.dataset.matchId = canonicalMatchId(match, dashboardState.round || 1);
   helpBtn.disabled = !!disabled;
 
   metaRow.appendChild(sel);
@@ -519,6 +603,7 @@ const profile = await safeGetProfile(user.id);
     return;
   }
 
+  await loadAnnouncement();
   const code = contest.code;
   const round = Number(contest.current_round ?? 1);
 
@@ -673,7 +758,7 @@ const quizHelpAvailable = Math.max(
 
 const helpState = {
   remaining: Number(totalAvailableHelp || 0),
-  used: Array.isArray(helpRes.data?.used_match_ids) ? helpRes.data.used_match_ids : [],
+  used: Array.isArray(helpRes.data?.used_match_ids) ? helpRes.data.used_match_ids.map((x) => String(x)) : [],
 };
 
 const getPurchaseHelpCount = () => purchaseHelpAvailable;
@@ -716,7 +801,7 @@ renderHelpBreakdown(getPurchaseHelpCount(), getQuizHelpCount());
   refreshDashboardLabels();
 
   const predMap = new Map();
-  (predsRes.data || []).forEach((p) => predMap.set(p.match_id, p.pick));
+  (predsRes.data || []).forEach((p) => predMap.set(String(p.match_id), p.pick));
 
 
 // Load match results (for "Τελικό" + status display)
@@ -773,7 +858,7 @@ function computeFinalAndStatus(matchId, pickVal) {
   if (!matchesBox) return;
   matchesBox.innerHTML = "";
 
-  const matches = Array.isArray(contest.matches) ? contest.matches : [];
+  const matches = (Array.isArray(contest.matches) ? contest.matches : []).map((m) => ({ ...m, id: canonicalMatchId(m, round) }));
   if (!matches.length) {
     matchesBox.innerHTML = `<div class="mini">❌ Δεν υπάρχουν αγώνες.</div>`;
     return;
@@ -835,7 +920,7 @@ function computeFinalAndStatus(matchId, pickVal) {
   }
 
   for (const m of matches) {
-    const matchId = m.id;
+    const matchId = canonicalMatchId(m, round);
     const existingPick = predMap.get(matchId) ?? "";
     const { row, sel, btn, helpBtn, finalEl, statusEl } = buildMatchRow(m, existingPick, isLocked || deadlinePassed || lateBlocked);
 
@@ -893,7 +978,7 @@ async function persistHelpState() {
     contest_code: code,
     purchased_at: new Date().toISOString(),
     remaining: helpState.remaining,
-    used_match_ids: helpState.used,
+    used_match_ids: [...new Set((helpState.used || []).map((x) => String(x)))],
     updated_at: new Date().toISOString(),
   };
   const { error } = await supabase
@@ -1102,6 +1187,174 @@ window.addEventListener("appinstalled", () => {
   if (installBtnEl) installBtnEl.style.display = "none";
 });
 
+
+
+// ================================
+// PUSH NOTIFICATIONS
+// ================================
+const CMP_VAPID_PUBLIC_KEY = "BLXf2zzs5jNB1SesRaNd8W2Ipep5eB10k91k9k25NordIOsLgb0Jawxpx0D1y-qge1kCGGVGdqPc4dcBHE7lOXaXs";
+const CMP_SW_URL = "/sw.js?v=mobilefix2";
+
+function setNotificationStatus(message, type = "warn") {
+  const el = document.getElementById("notificationStatus");
+  if (!el) return;
+  el.style.display = "block";
+  el.className = `notice ${type}`.trim();
+  el.textContent = message || "";
+}
+
+function getCleanVapidPublicKey() {
+  return String(CMP_VAPID_PUBLIC_KEY || "").trim().replace(/\s+/g, "");
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const clean = String(base64String || "").trim().replace(/\s+/g, "");
+  if (!clean) throw new Error("Λείπει το VAPID public key.");
+  if (!/^[A-Za-z0-9\-_]+$/.test(clean)) {
+    throw new Error("Το VAPID public key έχει λάθος χαρακτήρες.");
+  }
+
+  const padding = "=".repeat((4 - (clean.length % 4)) % 4);
+  const base64 = (clean + padding).replace(/-/g, "+").replace(/_/g, "/");
+
+  let rawData = "";
+  try {
+    rawData = atob(base64);
+  } catch (err) {
+    console.error("VAPID decode error:", err, { clean, base64 });
+    throw new Error("Το VAPID key δεν διαβάστηκε σωστά στη συσκευή. Κάνε refresh και δοκίμασε ξανά.");
+  }
+
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function getServiceWorkerRegistration() {
+  if (!("serviceWorker" in navigator)) return null;
+  const existing = await navigator.serviceWorker.getRegistration("/");
+  if (existing) return existing;
+  const registration = await navigator.serviceWorker.register(CMP_SW_URL, { scope: "/" });
+  await navigator.serviceWorker.ready;
+  return registration;
+}
+
+async function getExistingPushSubscription() {
+  const registration = await getServiceWorkerRegistration();
+  if (!registration) return null;
+  return registration.pushManager.getSubscription();
+}
+
+async function refreshNotificationUI() {
+  const btn = document.getElementById("enableNotificationsBtn");
+  if (!btn) return;
+
+  if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+    btn.disabled = true;
+    setNotificationStatus("Το browser δεν υποστηρίζει push notifications.", "err");
+    return;
+  }
+
+  const permission = Notification.permission;
+  const sub = await getExistingPushSubscription().catch(() => null);
+
+  if (permission === "denied") {
+    btn.disabled = true;
+    setNotificationStatus("Έχεις μπλοκάρει τα notifications για αυτό το site.", "err");
+    return;
+  }
+
+  if (sub) {
+    btn.disabled = true;
+    btn.textContent = "Notifications Enabled ✅";
+    setNotificationStatus("Οι ειδοποιήσεις είναι ενεργές σε αυτή τη συσκευή.", "ok");
+    return;
+  }
+
+  btn.disabled = false;
+  btn.textContent = "Enable Notifications";
+  setNotificationStatus(permission === "granted" ? "Πάτα για να γίνει εγγραφή της συσκευής." : "Δεν έχουν ενεργοποιηθεί ακόμα.", "warn");
+}
+
+async function subscribeUserToPush() {
+  try {
+    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      throw new Error("Το browser δεν υποστηρίζει push notifications.");
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) throw new Error("Πρέπει να κάνεις login πρώτα.");
+
+    setNotificationStatus("Ζητάω άδεια για notifications...", "warn");
+
+    let permission = Notification.permission;
+    if (permission !== "granted") {
+      permission = await Notification.requestPermission();
+    }
+    if (permission !== "granted") {
+      throw new Error("Δεν δόθηκε άδεια για notifications.");
+    }
+
+    const vapidKey = getCleanVapidPublicKey();
+    const registration = await getServiceWorkerRegistration();
+    if (!registration) throw new Error("Δεν έγινε register το service worker.");
+
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+    }
+
+    const subJson = subscription.toJSON();
+    const endpoint = String(subJson.endpoint || "").trim();
+    const p256dh = String(subJson.keys?.p256dh || "").trim();
+    const auth = String(subJson.keys?.auth || "").trim();
+
+    if (!endpoint || !p256dh || !auth) {
+      throw new Error("Δεν διαβάστηκαν σωστά τα push keys της συσκευής.");
+    }
+
+    const payload = {
+      user_id: user.id,
+      endpoint,
+      p256dh,
+      auth,
+    };
+
+    let result = await supabase
+      .from("push_subscriptions")
+      .upsert(payload, { onConflict: "endpoint" });
+
+    if (result.error) {
+      result = await supabase
+        .from("push_subscriptions")
+        .delete()
+        .eq("endpoint", endpoint);
+
+      if (result.error) throw result.error;
+
+      result = await supabase.from("push_subscriptions").insert(payload);
+      if (result.error) throw result.error;
+    }
+
+    setNotificationStatus("Οι ειδοποιήσεις ενεργοποιήθηκαν σε αυτή τη συσκευή!", "ok");
+    await refreshNotificationUI();
+  } catch (err) {
+    console.error("Push subscribe failed:", err);
+    setNotificationStatus(err?.message || "Αποτυχία ενεργοποίησης notifications.", "err");
+  }
+}
+
+window.subscribeUserToPush = subscribeUserToPush;
+
+document.getElementById("enableNotificationsBtn")?.addEventListener("click", subscribeUserToPush);
+window.addEventListener("load", () => { refreshNotificationUI().catch(console.warn); });
+
 main().catch((e) => {
   console.error(e);
   try {
@@ -1113,3 +1366,47 @@ main().catch((e) => {
     }
   } catch {}
 });
+
+
+
+// CMP Splash + optional intro music
+window.addEventListener("load", () => {
+  const splash = document.getElementById("cmpSplash");
+  const audio = document.getElementById("cmpIntroAudio");
+  const soundBtn = document.getElementById("cmpSoundBtn");
+
+  if (!splash) return;
+
+  if (audio) {
+    audio.volume = 0.35;
+    const playPromise = audio.play();
+    if (playPromise && typeof playPromise.then === "function") {
+      playPromise.catch(() => {
+        if (soundBtn) soundBtn.style.display = "inline-flex";
+      });
+    }
+  }
+
+  if (soundBtn && audio) {
+    soundBtn.addEventListener("click", async () => {
+      try {
+        await audio.play();
+        soundBtn.style.display = "none";
+      } catch (err) {
+        console.warn("Intro music blocked:", err);
+      }
+    });
+  }
+
+  setTimeout(() => {
+    splash.classList.add("hide");
+  }, 2200);
+
+  setTimeout(() => {
+    if (audio && !audio.paused) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+  }, 3000);
+});
+
