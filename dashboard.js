@@ -1005,13 +1005,23 @@ helpBtn.addEventListener("click", async () => {
   }
 
   // toggle
-  if (used) {
-    helpState.used = helpState.used.filter((x) => x !== matchId);
-    helpState.remaining += 1;
+if (used) {
+  helpState.used = helpState.used.filter((x) => x !== matchId);
+  helpState.remaining += 1;
+} else {
+  if (purchaseHelpAvailable > 0) {
+    purchaseHelpAvailable -= 1;
+  } else if (quizHelpAvailable > 0) {
+    quizHelpAvailable -= 1;
   } else {
-    helpState.used.push(matchId);
-    helpState.remaining -= 1;
+    notice("Δεν έχεις άλλα HELP.", "warn");
+    return;
   }
+
+  helpState.used.push(matchId);
+  helpState.remaining = purchaseHelpAvailable + quizHelpAvailable;
+}
+
 
   const ok = await persistHelpState();
   if (ok) notice(used ? "↩️ Αφαιρέθηκε HELP από τον αγώνα." : "✅ Έβαλες HELP στον αγώνα.", "ok");
