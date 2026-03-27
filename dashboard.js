@@ -687,47 +687,21 @@ const profile = await safeGetProfile(user.id);
 
   const deadlinePassed = isDeadlinePassed(contest.deadline_iso);
 
-// ===============================
-// LOAD HELP TOTALS (SQL VIEW)
-// ===============================
-const { data: helpTotalRow, error: helpTotalErr } = await supabase
-  .from("help_total_v")
-  .select("purchase_remaining, quiz_total, total_help")
-  .eq("user_id", user.id)
-  .eq("contest_code", code)
-  .maybeSingle();
 
-if (helpTotalErr) {
-  console.error("help_total_v error:", helpTotalErr);
-}
-
-// Load used matches (for HELP toggle buttons)
-const { data: helpRes } = await supabase
+// Load HELP purchase (ONE per contest) + usage per match
+const helpRes = await supabase
   .from("help_purchases")
-  .select("used_match_ids")
+  .select("remaining, used_match_ids, credits_granted, status")
   .eq("user_id", user.id)
   .eq("contest_code", code)
-  .order("created_at", { ascending: false })
-  .limit(1)
   .maybeSingle();
 
-// HELP counts from SQL view
-const purchaseHelpAvailable = Number(helpTotalRow?.purchase_remaining || 0);
-const quizHelpAvailable = Number(helpTotalRow?.quiz_total || 0);
-const totalAvailableHelp = Number(helpTotalRow?.total_help || 0);
+const contestAnchorIso = contest?.starts_at || contest?.created_at || null;
 
-// HELP state
-const helpState = {
-  remaining: totalAvailableHelp,
-  used: Array.isArray(helpRes?.used_match_ids)
-    ? helpRes.used_match_ids.map((x) => String(x))
-    : []
-};
-
-// Update UI
-renderHelpBreakdown(purchaseHelpAvailable, quizHelpAvailable);
-
-
+const quizHelpRes = await supabase
+  .from("quiz_help_rewards")
+  .select("amount, created_at")
+  .eq("user_id", user.id);
 
 if (quizHelpRes.error) {
   console.warn("quiz_help_rewards load error:", quizHelpRes.error);
