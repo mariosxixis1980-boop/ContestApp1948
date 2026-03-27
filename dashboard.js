@@ -728,10 +728,10 @@ const remainingFromPurchase = (() => {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 })();
-	
-const totalAvailableHelp =
-  Number(remainingFromPurchase || 0) +
-Number(quizHelpEarned || 0);
+
+const totalAvailableHelp = remainingFromPurchase !== null
+  ? remainingFromPurchase
+  : quizHelpEarned;
 
 // Purchase credits granted for this contest (normally 3, or 0 if no purchase)
 const purchaseCreditsGranted = (() => {
@@ -977,7 +977,7 @@ async function persistHelpState() {
     user_id: user.id,
     contest_code: code,
     purchased_at: new Date().toISOString(),
-    remaining: purchaseHelpAvailable,
+    remaining: helpState.remaining,
     used_match_ids: [...new Set((helpState.used || []).map((x) => String(x)))],
     updated_at: new Date().toISOString(),
   };
@@ -1005,30 +1005,13 @@ helpBtn.addEventListener("click", async () => {
   }
 
   // toggle
-if (used) {
-  helpState.used = helpState.used.filter((x) => x !== matchId);
-
-  if (purchaseHelpAvailable < purchaseCreditsGranted) {
-    purchaseHelpAvailable += 1;
+  if (used) {
+    helpState.used = helpState.used.filter((x) => x !== matchId);
+    helpState.remaining += 1;
   } else {
-    quizHelpAvailable += 1;
+    helpState.used.push(matchId);
+    helpState.remaining -= 1;
   }
-
-  helpState.remaining = purchaseHelpAvailable + quizHelpAvailable;
-} else {
-  if (purchaseHelpAvailable > 0) {
-    purchaseHelpAvailable -= 1;
-  } else if (quizHelpAvailable > 0) {
-    quizHelpAvailable -= 1;
-  } else {
-    notice("Δεν έχεις άλλα HELP.", "warn");
-    return;
-  }
-
-  helpState.used.push(matchId);
-  helpState.remaining = purchaseHelpAvailable + quizHelpAvailable;
-}
-
 
   const ok = await persistHelpState();
   if (ok) notice(used ? "↩️ Αφαιρέθηκε HELP από τον αγώνα." : "✅ Έβαλες HELP στον αγώνα.", "ok");
