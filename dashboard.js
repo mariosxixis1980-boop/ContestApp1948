@@ -977,7 +977,7 @@ async function persistHelpState() {
     user_id: user.id,
     contest_code: code,
     purchased_at: new Date().toISOString(),
-    remaining: helpState.remaining,
+    remaining: purchaseHelpAvailable,
     used_match_ids: [...new Set((helpState.used || []).map((x) => String(x)))],
     updated_at: new Date().toISOString(),
   };
