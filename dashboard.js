@@ -1007,7 +1007,14 @@ helpBtn.addEventListener("click", async () => {
   // toggle
 if (used) {
   helpState.used = helpState.used.filter((x) => x !== matchId);
-  helpState.remaining += 1;
+
+  if (purchaseHelpAvailable < purchaseCreditsGranted) {
+    purchaseHelpAvailable += 1;
+  } else {
+    quizHelpAvailable += 1;
+  }
+
+  helpState.remaining = purchaseHelpAvailable + quizHelpAvailable;
 } else {
   if (purchaseHelpAvailable > 0) {
     purchaseHelpAvailable -= 1;
