@@ -729,9 +729,9 @@ const remainingFromPurchase = (() => {
   return Number.isFinite(n) ? n : null;
 })();
 
-const totalAvailableHelp =
-  Number(remainingFromPurchase || 0) + Number(quizHelpEarned || 0);
-
+const totalAvailableHelp = remainingFromPurchase !== null
+  ? remainingFromPurchase
+  : quizHelpEarned;
 
 // Purchase credits granted for this contest (normally 3, or 0 if no purchase)
 const purchaseCreditsGranted = (() => {
