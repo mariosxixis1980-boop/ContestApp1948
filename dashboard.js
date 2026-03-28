@@ -188,9 +188,9 @@ function ensureHelpBreakdownUI() {
 
 function renderHelpBreakdown(purchaseCount = 0, quizCount = 0) {
   ensureHelpBreakdownUI();
-  setText("buyHelpCountPill", `${t("buyHelpCount")}: ${purchaseCount}`);
-  setText("quizHelpCountPill", `${t("quizHelpCount")}: ${quizCount}`);
-  setText("totalHelpCountPill", `${t("totalHelpCount")}: ${Number(purchaseCount || 0) + Number(quizCount || 0)}`);
+  const total = Number(purchaseCount || 0) + Number(quizCount || 0);
+  const el = document.getElementById("totalHelpCountPill");
+  if (el) el.textContent = `🎯 Συνολικά Help: ${total}`;
 }
 
 
