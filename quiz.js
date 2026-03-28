@@ -81,10 +81,11 @@ async function startQuiz() {
       return;
     }
 
-    const { data, error } = await quizClient.rpc(
-      "get_random_quiz_questions_for_user",
-      { p_user: user.id }
-    );
+  const { data, error } = await quizClient.rpc(
+  "get_random_quiz_questions_for_user",
+  { p_user_id: user.id }
+);
+
 
     if (error) {
       console.error("Quiz load error:", error);
