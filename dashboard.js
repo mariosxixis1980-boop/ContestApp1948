@@ -178,14 +178,13 @@ function ensureHelpBreakdownUI() {
   box.style.marginTop = "14px";
 
   box.innerHTML = `
-    <span id="buyHelpCountPill" class="miniPill">${t("buyHelpCount")}: 0</span>
-    <span id="quizHelpCountPill" class="miniPill">${t("quizHelpCount")}: 0</span>
-    <span id="totalHelpCountPill" class="miniPill">${t("totalHelpCount")}: 0</span>
+    <span id="totalHelpCountPill" class="miniPill">🎯 Συνολικά Help: 0</span>
   `;
 
   featureCard.appendChild(box);
   return box;
 }
+
 
 function renderHelpBreakdown(purchaseCount = 0, quizCount = 0) {
   ensureHelpBreakdownUI();
