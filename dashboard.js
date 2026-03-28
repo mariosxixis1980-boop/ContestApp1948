@@ -178,19 +178,20 @@ function ensureHelpBreakdownUI() {
   box.style.marginTop = "14px";
 
   box.innerHTML = `
-    <span id="totalHelpCountPill" class="miniPill">🎯 Συνολικά Help: 0</span>
+    <span id="buyHelpCountPill" class="miniPill">${t("buyHelpCount")}: 0</span>
+    <span id="quizHelpCountPill" class="miniPill">${t("quizHelpCount")}: 0</span>
+    <span id="totalHelpCountPill" class="miniPill">${t("totalHelpCount")}: 0</span>
   `;
 
   featureCard.appendChild(box);
   return box;
 }
 
-
 function renderHelpBreakdown(purchaseCount = 0, quizCount = 0) {
   ensureHelpBreakdownUI();
-  const total = Number(purchaseCount || 0) + Number(quizCount || 0);
-  const el = document.getElementById("totalHelpCountPill");
-  if (el) el.textContent = `🎯 Συνολικά Help: ${total}`;
+  setText("buyHelpCountPill", `${t("buyHelpCount")}: ${purchaseCount}`);
+  setText("quizHelpCountPill", `${t("quizHelpCount")}: ${quizCount}`);
+  setText("totalHelpCountPill", `${t("totalHelpCount")}: ${Number(purchaseCount || 0) + Number(quizCount || 0)}`);
 }
 
 
