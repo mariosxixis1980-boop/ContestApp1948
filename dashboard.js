@@ -608,7 +608,7 @@ const profile = await safeGetProfile(user.id);
   if (box) {
     box.className = "notice ok";
     box.style.display = "block";
-    box.textContent = "ℹ️ Μπήκες μετά την έναρξη. Παίζεις κανονικά από την τρέχουσα αγωνιστική.";
+    box.textContent = "ℹ️welcome";
   }
   window.__cmpDeadlineIso = contest.deadline_iso || "";
   const deadlineDate = parseISO(contest.deadline_iso);
