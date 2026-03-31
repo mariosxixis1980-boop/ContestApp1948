@@ -643,16 +643,16 @@ const profile = await safeGetProfile(user.id);
       if (userCreatedAt && !isNaN(userCreatedAt.getTime())) {
         if (userCreatedAt.getTime() > startsAt.getTime() && !isParticipant) {
           lateBlocked = true;
-          window.__cmpLateBlocked = true;
+        window.__cmpLateBlocked = false;
 
-          // Persistent banner (χωρίς auto-hide)
-          const box = document.getElementById("notice");
-          if (box) {
-            box.className = "notice warn";
-            box.style.display = "block";
-            box.textContent = "⛔ Ο διαγωνισμός ξεκίνησε. Θα ενημερώσουμε για τον επόμενο 🙌";
-            try { clearTimeout(window.__cmpNoticeT); } catch {}
-          }
+// Μήνυμα απλά ενημερωτικό
+const box = document.getElementById("notice");
+if (box) {
+  box.className = "notice ok";
+  box.style.display = "block";
+  box.textContent = "ℹ️ Μπήκες μετά την έναρξη. Παίζεις κανονικά από την τρέχουσα αγωνιστική.";
+}
+
         }
       }
     }
