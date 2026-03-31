@@ -258,7 +258,6 @@ async function loadAnnouncement() {
 }
 
 function notice(msg, kind = "ok") {
-  if (window.__cmpLateBlocked && kind !== "err") return;
   const box = document.getElementById("notice");
   if (!box) return;
   box.className = "notice " + (kind === "err" ? "err" : kind === "warn" ? "warn" : "ok");
@@ -601,64 +600,15 @@ const profile = await safeGetProfile(user.id);
 	}
 
 
-  // LATE JOIN GUARD (SAFE):
-  // Στόχος: όσοι είχαν λογαριασμό ΠΡΙΝ ξεκινήσει ο διαγωνισμός παίζουν.
-  // Όσοι κάνουν signup ΜΕΤΑ, βλέπουν μήνυμα και όλα disabled.
-  //
-  // Χρησιμοποιούμε profiles.created_at (backfilled από auth.users.created_at) ως αξιόπιστο timestamp.
-  // Προαιρετικά, αν κάποιος είναι ήδη στο contest_participants, θεωρείται επιτρεπτός.
+  // LATE JOIN: late users allowed
   let lateBlocked = false;
-  try {
-    const startsAt = contest.starts_at ? new Date(contest.starts_at) : null;
-    const startedOrLocked =
-      (startsAt && new Date() >= startsAt) ||
-      contest.locked === true ||
-      String(contest.status || "").toUpperCase() === "LOCKED";
-
-    if (startedOrLocked && startsAt && !isNaN(startsAt.getTime())) {
-      // 1) Πάρε created_at του χρήστη (profiles)
-      const profRes = await supabase
-        .from("profiles")
-        .select("created_at")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      const userCreatedAt = profRes?.data?.created_at ? new Date(profRes.data.created_at) : null;
-
-      // 2) Προαιρετικά: αν είναι ήδη participant, άσε τον να παίξει
-      let isParticipant = false;
-      const partRes = await supabase
-        .from("contest_participants")
-        .select("id")
-        .eq("contest_id", contest.id)
-        .eq("user_id", user.id)
-        .limit(1)
-        .maybeSingle();
-
-      if (!partRes?.error && !!partRes?.data) isParticipant = true;
-
-      // 3) Late rule:
-      // Αν ΔΕΝ έχουμε created_at (π.χ. δεν έτρεξε το SQL backfill ακόμα), ΔΕΝ μπλοκάρουμε κανέναν (safe).
-      // Αν created_at υπάρχει και είναι ΜΕΤΑ το starts_at και δεν είναι participant -> μπλοκάρουμε.
-      if (userCreatedAt.getTime() > startsAt.getTime() && !isParticipant) {
-  lateBlocked = false;
   window.__cmpLateBlocked = false;
-}
 
-
-// Μήνυμα απλά ενημερωτικό
-const box = document.getElementById("notice");
-if (box) {
-  box.className = "notice ok";
-  box.style.display = "block";
-  box.textContent = "ℹ️welcome";
-}
-
-        }
-      }
-    }
-  } catch (e) {
-    console.warn("Late guard check failed:", e);
+  const box = document.getElementById("notice");
+  if (box) {
+    box.className = "notice ok";
+    box.style.display = "block";
+    box.textContent = "ℹ️ Μπήκες μετά την έναρξη. Παίζεις κανονικά από την τρέχουσα αγωνιστική.";
   }
   window.__cmpDeadlineIso = contest.deadline_iso || "";
   const deadlineDate = parseISO(contest.deadline_iso);
@@ -848,11 +798,11 @@ function computeFinalAndStatus(matchId, pickVal) {
   const pending = new Map();
 
   async function upsertPrediction(matchId, pickVal) {
-    if (lateBlocked || isLocked) {
+    if (isLocked) {
       notice("Οι προβλέψεις είναι κλειδωμένες.", "warn");
       return { ok: false };
     }
-    if (!lateBlocked && deadlinePassed) {
+    if (deadlinePassed) {
       notice("Πέρασε το deadline. Δεν μπορείς να αλλάξεις πρόβλεψη.", "warn");
       return { ok: false };
     }
@@ -902,7 +852,7 @@ function computeFinalAndStatus(matchId, pickVal) {
   for (const m of matches) {
     const matchId = m.id;
     const existingPick = predMap.get(matchId) ?? "";
-    const { row, sel, btn, helpBtn, finalEl, statusEl } = buildMatchRow(m, existingPick, isLocked || deadlinePassed || lateBlocked);
+    const { row, sel, btn, helpBtn, finalEl, statusEl } = buildMatchRow(m, existingPick, isLocked || deadlinePassed);
 
     function refreshOutcome() {
       const v = sel.value || "";
@@ -1009,21 +959,13 @@ renderHelpBtn();
 const buyBtn = document.getElementById("buyBtn");
 if (buyBtn) {
   const alreadyBought = !!helpRes.data;
-  buyBtn.disabled = alreadyBought || lateBlocked;
-  if (lateBlocked) {
-    buyBtn.textContent = "⛔ Ο διαγωνισμός ξεκίνησε";
-  } else {
-    buyBtn.textContent = alreadyBought ? `✅ HELP ενεργό (${helpState.remaining} διαθέσιμα)` : "🧠 Αγορά HELP (€1,99)";
-  }
+  buyBtn.disabled = alreadyBought || deadlinePassed || isLocked;
+  buyBtn.textContent = alreadyBought ? `✅ HELP ενεργό (${helpState.remaining} διαθέσιμα)` : "🧠 Αγορά HELP (€1,99)";
 
   renderHelpBreakdown(getPurchaseHelpCount(), getQuizHelpCount());
 
 buyBtn.addEventListener("click", () => {
     // Guards (same rules as before)
-    if (lateBlocked) {
-      notice("⛔ Ο διαγωνισμός ξεκίνησε — δεν μπορείς να αγοράσεις.", "warn");
-      return;
-    }
     if (deadlinePassed || isLocked) {
       notice("🔒 Δεν μπορείς να αγοράσεις HELP μετά το κλείδωμα/deadline.", "warn");
       return;
@@ -1075,33 +1017,22 @@ buyBtn.addEventListener("click", () => {
 
   // ensure UI matches backend lock state on load
   // Treat deadlinePassed as locked UI as well (same red style)
-  applyLockUI(isLocked || lateBlocked || deadlinePassed);
+  applyLockUI(isLocked || deadlinePassed);
   refreshDashboardLabels();
 
   // Late users: κρατάμε το dashboard αλλά όλα disabled
-  if (lateBlocked && lockBtn) {
-    lockBtn.disabled = true;
-  }
-
-
   if (lockBtn) {
-    lockBtn.disabled = lateBlocked || deadlinePassed;
+    lockBtn.disabled = deadlinePassed;
     lockBtn.addEventListener("click", async () => {
       // Double confirmation only (do NOT block if some picks are missing)
       if (!confirm("Για ασφάλεια: Είσαι σίγουρος ότι πρόβλεψες σε ΟΛΑ τα παιχνίδια;")) return;
       if (!confirm("Είσαι σίγουρος; Να κλειδώσω τις προβλέψεις σου τώρα;")) return;
-      if (lateBlocked) {
-        notice("⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει. Θα ενημερώσουμε για τον επόμενο.", "warn");
-        applyLockUI(true);
-        return;
-      }
-
-      if (lateBlocked || isLocked) {
+      if (isLocked) {
         notice("Ήδη κλειδωμένες.", "warn");
         applyLockUI(true);
         return;
       }
-      if (!lateBlocked && deadlinePassed) {
+      if (deadlinePassed) {
         notice("Πέρασε το deadline. Κλείδωμα αυτόματα.", "warn");
         return;
       }
@@ -1129,7 +1060,7 @@ buyBtn.addEventListener("click", () => {
     });
   }
 
-  if (!lateBlocked && deadlinePassed) {
+  if (deadlinePassed) {
     notice("⏳ Έληξε το deadline. Οι προβλέψεις είναι κλειδωμένες.", "warn");
   }
 }
