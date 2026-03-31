@@ -640,17 +640,18 @@ const profile = await safeGetProfile(user.id);
       // 3) Late rule:
       // Αν ΔΕΝ έχουμε created_at (π.χ. δεν έτρεξε το SQL backfill ακόμα), ΔΕΝ μπλοκάρουμε κανέναν (safe).
       // Αν created_at υπάρχει και είναι ΜΕΤΑ το starts_at και δεν είναι participant -> μπλοκάρουμε.
-      if (userCreatedAt && !isNaN(userCreatedAt.getTime())) {
-        if (userCreatedAt.getTime() > startsAt.getTime() && !isParticipant) {
-          lateBlocked = true;
-        window.__cmpLateBlocked = false;
+      if (userCreatedAt.getTime() > startsAt.getTime() && !isParticipant) {
+  lateBlocked = false;
+  window.__cmpLateBlocked = false;
+}
+
 
 // Μήνυμα απλά ενημερωτικό
 const box = document.getElementById("notice");
 if (box) {
   box.className = "notice ok";
   box.style.display = "block";
-  box.textContent = "ℹ️ Μπήκες μετά την έναρξη. Παίζεις κανονικά από την τρέχουσα αγωνιστική.";
+  box.textContent = "ℹ️welcome";
 }
 
         }
