@@ -608,7 +608,7 @@ const profile = await safeGetProfile(user.id);
   if (box) {
     box.className = "notice ok";
     box.style.display = "block";
-    box.textContent = "welcome and good luck";
+    box.textContent = "ℹ️welcome and good luck";
   }
   window.__cmpDeadlineIso = contest.deadline_iso || "";
   const deadlineDate = parseISO(contest.deadline_iso);
