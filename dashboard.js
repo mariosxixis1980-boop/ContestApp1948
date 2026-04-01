@@ -1103,7 +1103,7 @@ window.addEventListener("appinstalled", () => {
 // ================================
 // PUSH NOTIFICATIONS
 // ================================
-const CMP_VAPID_PUBLIC_KEY = "872899f2617b87928e4f0e9dc1d044542a94480bec01ae57638e752dfd55459f";
+const CMP_VAPID_PUBLIC_KEY = "BLXf2zzs5jNB1SesRaNd8W2Ipep5eB10k91k9k25NordIOsLgb0Jawxpx0D1y-qge1kCGGVGdqPc4dcBHE7lOXaXs";
 const CMP_SW_URL = "/sw.js?v=mobilefix2";
 
 function setNotificationStatus(message, type = "warn") {
