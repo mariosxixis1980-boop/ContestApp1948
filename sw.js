@@ -1,4 +1,4 @@
-// CMP notifications service worker v2
+// Minimal Service Worker for installability only (no caching logic)
 self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
@@ -7,38 +7,46 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-self.addEventListener("push", (event) => {
-  let data = { title: "CMP", body: "Νέα ειδοποίηση" };
-  try {
-    data = event.data ? event.data.json() : data;
-  } catch (_) {}
+self.addEventListener("fetch", () => {
+  // Intentionally no caching to avoid stale contest/admin state.
+});
 
-  event.waitUntil(
-    self.registration.showNotification(data.title || "CMP", {
-      body: data.body || "Νέα ειδοποίηση",
-      icon: "./icon-192.png",
-      badge: "./icon-192.png",
-      data: data.url || "./dashboard.html",
-    })
-  );
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (_) {
+    data = { body: event.data ? event.data.text() : "" };
+  }
+
+  const title = data.title || "CMP";
+  const options = {
+    body: data.body || "Έχεις νέα ενημέρωση.",
+    icon: data.icon || "./icon-192.png",
+    badge: data.badge || "./icon-192.png",
+    data: {
+      url: data.url || "./dashboard.html",
+    },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = event.notification?.data || "./dashboard.html";
+  const targetUrl = event.notification?.data?.url || "./dashboard.html";
 
   event.waitUntil((async () => {
-    const clientList = await clients.matchAll({ type: "window", includeUncontrolled: true });
-    for (const client of clientList) {
+    const allClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of allClients) {
       if ("focus" in client) {
-        client.navigate?.(targetUrl);
+        try {
+          await client.navigate(targetUrl);
+        } catch (_) {}
         return client.focus();
       }
     }
     if (clients.openWindow) return clients.openWindow(targetUrl);
   })());
-});
-
-self.addEventListener("fetch", () => {
-  // No caching here on purpose.
 });
