@@ -15,7 +15,7 @@ const DASH_I18N = {
     status: "Κατάσταση",
     statusOpen: "🟢 Ανοιχτές",
     statusLocked: "🔒 Κλειδωμένες",
-    buyHelp: "🧠 Αγορά HELP (€1,99)",
+    buyHelp: "🧠 Αγορά 3 HELP (€1,99)",
     lockPreds: "🔒 Κλείδωμα προβλέψεων",
     finalWeek: "🏁 Final Week",
     rules: "Κανονισμός",
