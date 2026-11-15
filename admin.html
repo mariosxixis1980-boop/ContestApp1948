@@ -90,6 +90,32 @@ hr{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0}
     .footer-legal{margin:22px auto 0;max-width:520px;text-align:center;font-size:13px;color:rgba(255,255,255,.65)}
     .footer-legal a{margin:0 10px;color:rgba(255,255,255,.8);text-decoration:none}
     .footer-legal a:hover{text-decoration:underline}
+
+/* CMP Admin refresh: visual-only overrides; preserve existing IDs and behavior. */
+:root{--bg:#080f0d;--b:rgba(90,183,130,.19);--t:#e9f7ee;--m:#9fb7a9;--g:rgba(24,191,105,.19);--gb:rgba(49,224,131,.48);--bl:rgba(33,155,103,.16);--blb:rgba(61,210,136,.42)}
+body{padding:28px 18px 48px;background:radial-gradient(ellipse 70% 35% at 50% -5%,rgba(28,155,90,.18),transparent),linear-gradient(145deg,#09120e,#0c1713 58%,#080e0c);line-height:1.5}
+.card{max-width:1360px;padding:26px;border-radius:24px;background:linear-gradient(165deg,rgba(21,40,31,.95),rgba(11,23,18,.96));border:1px solid rgba(77,178,118,.24);box-shadow:0 28px 90px rgba(0,0,0,.35)}
+h1{font-size:clamp(29px,3vw,42px);font-weight:850;letter-spacing:-1.3px}
+.sub{font-size:13px;font-weight:500;line-height:1.7;max-width:980px}
+.row{gap:9px;margin-top:15px}
+.pill{font-size:12px;letter-spacing:.1px;padding:8px 12px;background:#10241a;border:1px solid rgba(83,178,122,.25);color:#c8edda}
+.btn,button,a.btn{font-size:13px;font-weight:750;border-radius:11px;padding:11px 14px;transition:background .18s,border-color .18s,transform .18s}
+.btn:hover:not(:disabled),button:hover:not(:disabled){border-color:#38d584;background:rgba(30,155,91,.22);transform:translateY(-1px)}
+.btn:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #42e294;outline-offset:2px}
+.g{background:rgba(24,175,92,.23);border-color:rgba(48,224,130,.55);color:#a8ffd0}
+.bl{background:rgba(25,121,84,.23);border-color:rgba(49,198,126,.42)}
+.box{background:rgba(10,26,18,.73);border:1px solid rgba(80,165,115,.2);border-radius:17px;padding:17px}
+.grid{gap:16px;margin-top:17px}
+@media(min-width:980px){.grid{grid-template-columns:minmax(0,1.4fr) minmax(340px,.8fr)}}
+.big{font-size:17px;letter-spacing:-.2px;color:#e2fbed}
+.mini{font-size:12px;line-height:1.65;font-weight:550}
+label{font-size:12px;letter-spacing:.2px}
+input,textarea,select{background:#0a1a12;border:1px solid rgba(95,177,127,.28);padding:12px;color:#e9f7ee}
+input:focus,textarea:focus,select:focus{border-color:#3bd48a}
+.match{background:rgba(15,39,25,.7);border-color:rgba(73,174,112,.22)}
+th{color:#91d4ac;font-size:12px}td{font-size:13px}
+.notice{background:#10241a}
+@media(max-width:700px){body{padding:10px}.card{padding:14px;border-radius:16px}.box{padding:12px}.btn,button,a.btn{padding:10px 11px}}
 </style>
 </head>
 
@@ -98,7 +124,7 @@ hr{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0}
 
   <div style="text-align:center;margin-bottom:12px;">
     <div style="font-size:18px;font-weight:700;">Cyprus Match Predict</div>
-    <div style="font-size:13px;color:#C9A24D;letter-spacing:2px;margin-top:4px;">🇨🇾 ADMIN 🇨🇾</div>
+    <div style="font-size:13px;color:#52e49b;letter-spacing:2px;margin-top:4px;">🇨🇾 ADMIN 🇨🇾</div>
   </div>
 
   <h1>🛠️ Admin</h1>
